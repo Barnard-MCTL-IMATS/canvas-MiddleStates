@@ -8,13 +8,13 @@
 * @author Benjamin Rosner, br2490
 */
 
-/*********** Dev code start -- Marko K. ***********/
-/*********** Dev code start -- Marko K. ***********/
-/*********** Dev code start -- Marko K. ***********/
+
+/********************************/
+/*********** GET DATA ***********/
+/********************************/
 
 
-
-// Get data
+// Get term and course data
 function get_term_and_course_data() {
   // Temporary solution -- will update.
   $.ajaxSetup({ async: false });
@@ -41,6 +41,38 @@ function get_term_and_course_data() {
     $.ajaxSetup({ async: true });
     return {terms, courses}
 }
+
+
+// Get student data for a given course
+function get_student_list(course_id) {
+  $.ajaxSetup({ async: false });
+  try {
+    if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader")
+    return;
+
+    let students = []
+
+     $.getJSON(
+      `${window.location.origin}/api/v1/courses/${course_id}/enrollments`,
+        data => {
+          $.each(data, (key, value) => {
+            students.push({ 'id': value.user.id, 'name': value.user.name });
+          });
+        }).fail( (xhr, status, error) => {
+          console.error(`Failed to get API response. ${error}`);
+        });
+        $.ajaxSetup({ async: true });
+        return students
+  } catch (e) {
+  console.error(e);
+  }
+}
+
+
+/**********************************************/
+/*********** CREATE SELECT ELEMENTS ***********/
+/**********************************************/
+
 
 // Create term select object; populate with terms.
 function createTermSelect(terms) {
@@ -95,6 +127,10 @@ function createStudentSelect() {
 }
 
 
+/*********************************************/
+/*********** HANDLE SELECT CHANGES ***********/
+/*********************************************/
+
 // Handle term changes
 // Updates course-select options based on term selection
 // ToDos: update value attribute w/ course IDs
@@ -104,8 +140,10 @@ function handleTermSelect(courses) {
     return;
 
     $("#term-select").change(function(){
-      // Empty select object before creating new options.
-      $('#course-select').empty().append(createSelectOption('0', 'Select Course')) 
+      // Empty select on change.
+      $('#course-select').empty().append(createSelectOption('0', 'Select Course'))
+      $('#student-select').empty().append(createSelectOption('0', 'Select Student'))
+      
       let term_selected_id = $(this).val();
       let filtered_courses = courses.filter(course => { return course.term == term_selected_id})
 
@@ -115,32 +153,6 @@ function handleTermSelect(courses) {
                     .text(value.name));
       })
     });
-  } catch (e) {
-  console.error(e);
-  }
-}
-
-
-// Create course select object.
-function get_student_list(course_id) {
-  $.ajaxSetup({ async: false });
-  try {
-    if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader")
-    return;
-
-    let students = []
-
-     $.getJSON(
-      `${window.location.origin}/api/v1/courses/${course_id}/enrollments`,
-        data => {
-          $.each(data, (key, value) => {
-            students.push({ 'id': value.user.id, 'name': value.user.name });
-          });
-        }).fail( (xhr, status, error) => {
-          console.error(`Failed to get API response. ${error}`);
-        });
-        $.ajaxSetup({ async: true });
-        return students
   } catch (e) {
   console.error(e);
   }
@@ -163,6 +175,32 @@ function handleCourseSelect() {
                     .attr("value", value.id)
                     .text(value.name));
       })
+    });
+  } catch (e) {
+  console.error(e);
+  }
+}
+
+function handleCommentBoxUpdate() {
+  try {
+    if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader")
+    return;
+    $('#course-select, #term-select, #student-select').change(function () {
+        let term_selected_id = $("#term-select option:selected").val();
+        let term_selected_text = $("#term-select option:selected").text();
+        
+        let course_selected_id = $("#course-select option:selected").val();
+        let course_selected_text = $("#course-select option:selected").text();
+        
+        let student_selected_id = $("#student-select option:selected").val();
+        let student_selected_text = $("#student-select option:selected").text();
+
+        if (term_selected_id != 0) {
+          let comment_box_text = [term_selected_text,course_selected_text, student_selected_text].join(" | ")
+          $(document).ready(function() {
+            $('#speed_grader_comment_textarea').val( comment_box_text )
+          });
+        } else { $('#speed_grader_comment_textarea').val(""); }
     });
   } catch (e) {
   console.error(e);
@@ -383,6 +421,7 @@ function bcms_promptDirectToSpeedGrader() {
   });
 }
 
+
 /**
 * IN DEVELOPMENT.
 */
@@ -425,64 +464,6 @@ function bcms_getCourseList() {
       console.error(`Failed to get API response. ${error}`);
     });
   }
-  
-
-
-
-
-/**
-* IN DEVELOPMENT.
-*/
-function bcms_getCourseList_DEV() { 
-  const barnardCollegeAccountID = ['439']; // Barnard sub-account
-  let terms = {}; // object to hold terms
-  let courses = {}; // object to hold courses
-  
-  let termSelect = $( '<select />', {class: 'bc-ms', id: 'term-dropdown', 'selectedIndex': 0} );  
-  termSelect.append(createSelectOption(0, 'Select a Term', true));
-  
-  let courseSelect = $( '<select />', {class: 'bc-ms', id: 'course-dropdown', 'selectedIndex': 0} );  
-  courseSelect.append(createSelectOption(0, 'Select a Course', true));
-  
-  $.getJSON(
-    // Canvas course API,
-    `${window.location.origin}/api/v1/users/${ENV.current_user.id}/courses?include[]=term&include[]=account&per_page=150`, 
-    // results as data.
-    data => {
-      $.each(data, (key, value) => {
-        if ( !barnardCollegeAccountID.includes(value.account.parent_account_id) ) return; // Continue with Barnard Courses.
-
-          console.log(data)
-        
-        // There can be duplicate terms since we're starting at the COURSE level.
-        //if ( !terms[value.term.id] ) { 
-        //  terms[value.term.id] = value.term.name; // while this will only hold unique values,
-        //  termSelect.append(createSelectOption(value.term.id, value.term.name, false)); // this will dupe, so only pass wyn.
-        //}
-        
-        // Create the course options:
-        //courses[value.id] = {'name': value.name, 'term': value.term.id};
-        //courseSelect.append(createSelectOption(value.id, value.name, false));
-      
-
-      });
-      
-      // debug
-      //console.log(terms, courses, courseSelect, termSelect);
-      //$('body').append(termSelect);
-      //$('body').append(courseSelect);
-      
-    }).fail( (xhr, status, error) => {
-      console.error(`Failed to get API response. ${error}`);
-    });
-  }
-
-
-
-
-
-
-
 
 
   /**
@@ -507,7 +488,6 @@ function bcms_getCourseList_DEV() {
     
     // @todo: create object, run these
     bcms_addRaterSelectToPage();
-
     bcms_addSpeedGraderSaveNextButton();
     bcms_resizeSpeedGraderView();
     bcms_updateSpeedGraderCommentBox();
@@ -523,6 +503,7 @@ function bcms_getCourseList_DEV() {
     createStudentSelect();
     handleTermSelect(courses);
     handleCourseSelect();
+    handleCommentBoxUpdate();
 
   }
 

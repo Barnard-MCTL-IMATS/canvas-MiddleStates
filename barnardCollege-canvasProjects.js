@@ -5,7 +5,9 @@
 * Written for Barnard College.
 *
 * @date 2019-05-14
+* @modified 2019-06-11
 * @author Benjamin Rosner, br2490
+* @author Marko Krkeljas, mk4200
 */
 
 
@@ -73,13 +75,31 @@ function get_student_list(course_id) {
 /*********** CREATE SELECT ELEMENTS ***********/
 /**********************************************/
 
+function bcms_createSpeedGraderSelects() {
+  console.log('Hit bcms_createSpeedGraderSelects');
+
+  if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader")
+  return;
+
+  console.log('Entered bcms_createSpeedGraderSelects');
+
+  // Testing/Dev - Marko
+  var result = get_term_and_course_data()
+  var terms = result.terms;
+  var courses = result.courses;
+  console.log(result, terms, courses);
+
+  createTermSelect(terms);
+  createCourseSelect();
+  createStudentSelect();
+  handleTermSelect(courses);
+  handleCourseSelect();
+  handleCommentBoxUpdate();
+}
 
 // Create term select object; populate with terms.
 function createTermSelect(terms) {
-  try {
-    if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader")
-    return;
-    
+  try {  
     let term_select = $( '<select />', {class: 'bc-ms', id: 'term-select'} );
     term_select.append(createSelectOption( '0', 'Select Term'));
 
@@ -88,7 +108,8 @@ function createTermSelect(terms) {
                      .attr("value", key)
                      .text(value));
     });
-    term_select.appendTo('.content_box');
+
+    term_select.appendTo('form#add_a_comment');
   } catch (e) {
   console.error(e);
   }
@@ -98,12 +119,9 @@ function createTermSelect(terms) {
 // Create course select object.
 function createCourseSelect() {
   try {
-    if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader")
-    return;
-
     let course_select = $( '<select />', {class: 'bc-ms', id: 'course-select'} );
         course_select.append(createSelectOption( '0', 'Select Course'));
-        course_select.appendTo('.content_box');  
+        course_select.appendTo('form#add_a_comment');  
 
   } catch (e) {
   console.error(e);
@@ -114,12 +132,9 @@ function createCourseSelect() {
 // Create student select object.
 function createStudentSelect() {
   try {
-    if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader")
-    return;
-
     let student_select = $( '<select />', {class: 'bc-ms', id: 'student-select'} );
         student_select.append(createSelectOption( '0', 'Select Student'));
-        student_select.appendTo('.content_box');  
+        student_select.appendTo('form#add_a_comment');  
 
   } catch (e) {
   console.error(e);
@@ -136,9 +151,6 @@ function createStudentSelect() {
 // ToDos: update value attribute w/ course IDs
 function handleTermSelect(courses) {
   try {
-    if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader")
-    return;
-
     $("#term-select").change(function(){
       // Empty select on change.
       $('#course-select').empty().append(createSelectOption('0', 'Select Course'))
@@ -161,9 +173,6 @@ function handleTermSelect(courses) {
 
 function handleCourseSelect() {
   try {
-    if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader")
-    return;
-
     $("#course-select").change(function(){
       $('#student-select').empty().append(createSelectOption('0', 'Select Student')) // Empty select options
       
@@ -183,8 +192,6 @@ function handleCourseSelect() {
 
 function handleCommentBoxUpdate() {
   try {
-    if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader")
-    return;
     $('#course-select, #term-select, #student-select').change(function () {
         let term_selected_id = $("#term-select option:selected").val();
         let term_selected_text = $("#term-select option:selected").text();
@@ -196,7 +203,7 @@ function handleCommentBoxUpdate() {
         let student_selected_text = $("#student-select option:selected").text();
 
         if (term_selected_id != 0) {
-          let comment_box_text = [term_selected_text,course_selected_text, student_selected_text].join(" | ")
+          let comment_box_text = [term_selected_text, course_selected_text, student_selected_text].join(" | ")
           $(document).ready(function() {
             $('#speed_grader_comment_textarea').val( comment_box_text )
           });
@@ -254,10 +261,6 @@ function bc_fixRubricAlignment() {
   }
 }
 
-// Middle States project sites modifications.
-// date: 2019-05-14
-// author: br2490
-
 /**
 * The string representing the user's currently bcms_selectedRater user.
 * Will return 0 if no user is selected.
@@ -287,9 +290,7 @@ function bcms_addRaterSelectToPage() {
       let currentRater = `Rater ${o}`;
       select.append(createSelectOption( currentRater, currentRater, (currentRater === bcms_selectedRater) ));
     }
-    
-    console.log(select);
-    
+   
     // Handle change.
     select.change(() => {
       $( '#rater-dropdown option:selected' ).each(function() { // nb: this is not a multiple-enabled select.
@@ -493,17 +494,7 @@ function bcms_getCourseList() {
     bcms_updateSpeedGraderCommentBox();
     bcms_promptDirectToSpeedGrader();
 
-    // Testing/Dev - Marko
-    var result = get_term_and_course_data()
-    var terms = result.terms;
-    var courses = result.courses;
-
-    createTermSelect(terms);
-    createCourseSelect();
-    createStudentSelect();
-    handleTermSelect(courses);
-    handleCourseSelect();
-    handleCommentBoxUpdate();
+    bcms_createSpeedGraderSelects();
 
   }
 

@@ -381,13 +381,16 @@ function bcms_addSpeedGraderSaveNextButton() {
     return;
     
     $( '<button />' , {
-      id: 'bcms-save-and-next-student',
-      class: 'Button next',
+      id: 'bcms_save_and_next_student',
+      class: 'Button Button--primary save_and_next',
       type: 'button',
-      text: 'Save and Next Student'
+      text: 'Save and Next Student',
+      style: 'margin-left:3px'
     }).on("click", event => {
-      $('.comment_submit_button').click();
-      $('.icon-arrow-right.next').click();
+      $('button#comment_submit_button').click();
+      setTimeout( () => {
+        $('.icon-arrow-right.next').click();
+      }, 250);
     }).insertAfter('button.save_rubric_button.Button.Button--primary');
     
   } catch (e) {

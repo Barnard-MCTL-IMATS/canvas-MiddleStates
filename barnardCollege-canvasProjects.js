@@ -226,20 +226,19 @@ const bcms_assignment = class {
   }
   
   // POST /api/v1/courses/82207/assignments?assignment[name]={{this.name}}&assignment[submission_types][]=none&assignment[published]=true&assignment[position]=1
-  createAssignment = () => {
-
+  createAssignment() {
     // result = api.call;
-    this.id = 3947140987123;
+    // this.id = result['id'];
     console.log(this);
   }
 
   // POST /api/v1/courses/82207/rubric_associations?rubric_association[association_type]=Assignment&rubric_association[association_id]={{this.id}}&rubric_association[rubric_id]={{int}}&rubric_association[purpose]=grading
-  associateRubric = (rubricID) => {
+  associateRubric(rubricID) {
     console.log(this);
   }
 
   // POST /api/v1/courses/82207/modules/{{moduleID}}/items?module_item[title]={{this.name}}&module_item[type]=Assignment&module_item[content_id]={{this.id}}&module_item[indent]={{indent}}
-  createModuleItem = (moduleID, indent = 1) => {
+  createModuleItem(moduleID, indent = 1) {
     console.log(this);
   }
 

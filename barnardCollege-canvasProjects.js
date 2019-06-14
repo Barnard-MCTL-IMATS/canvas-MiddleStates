@@ -76,18 +76,14 @@ function get_student_list(course_id) {
 /**********************************************/
 
 function bcms_createSpeedGraderSelects() {
-  console.log('Hit bcms_createSpeedGraderSelects');
-
   if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader")
   return;
-
-  console.log('Entered bcms_createSpeedGraderSelects');
 
   // Testing/Dev - Marko
   var result = get_term_and_course_data()
   var terms = result.terms;
   var courses = result.courses;
-  console.log(result, terms, courses);
+  // console.log(result, terms, courses);
 
   createTermSelect(terms);
   createCourseSelect();
@@ -219,7 +215,9 @@ function handleCommentBoxUpdate() {
 /*********** Dev code end -- Marko K. ************/
 /*********** Dev code end -- Marko K. ************/
 
-const bcms_assignment = class { 
+const bcms_assessments = {},
+
+bcms_assignment = class { 
   
   constructor(name) {
     this.name = name;

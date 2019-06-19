@@ -215,8 +215,26 @@ function handleCommentBoxUpdate() {
 /*********** Dev code end -- Marko K. ************/
 /*********** Dev code end -- Marko K. ************/
 
-const bcms_assessments = {},
+let currentCourseID = null; // current course id.
+const barnardCollegeAccountID = ['439'], // Barnard's Canvas account.parent_account_id
+bc_middleStatesCourses = ["82207"], // Courses considered for MS assessment
 
+// something like this?
+bcms_assessments = [
+  { 
+    name: 'Oral Communication Assessment',
+    rubric: 16108,
+    moduleLocation: 1,
+  },
+  { 
+    name: 'Thinking Locally – New York City Assessment',
+    rubric: 16111,
+    moduleLocation: 2,
+  },
+  {
+
+  }],
+// Middle State assessment object, create an assignment and do work.
 bcms_assignment = class { 
   
   constructor(name) {
@@ -225,27 +243,71 @@ bcms_assignment = class {
   
   // POST /api/v1/courses/82207/assignments?assignment[name]={{this.name}}&assignment[submission_types][]=none&assignment[published]=true&assignment[position]=1
   createAssignment() {
-    // result = api.call;
-    // this.id = result['id'];
-    console.log(this);
+    let params = {
+      assignment: {
+        name: this.name,
+        published: true,
+        submission_types: { }
+      }
+    },
+    settings = {
+      url: `${window.location.origin}/api/v1/courses/${currentCourseID}/assignments`,
+      // method: "POST", // jQuery >= 1.9
+      type: "POST",
+      data: params
+    };
+
+    $.ajax( settings )
+    .done( data => { 
+      console.log('created assignment', data);
+      this.id = data.id;
+    })
+    .fail( (xhr, status, error) => {
+      console.error(`failed to create assignment: ${error}`, xhr);
+    });
+
   }
 
   // POST /api/v1/courses/82207/rubric_associations?rubric_association[association_type]=Assignment&rubric_association[association_id]={{this.id}}&rubric_association[rubric_id]={{int}}&rubric_association[purpose]=grading
   associateRubric(rubricID) {
-    console.log(this);
+    let settings = {
+      url: `${window.location.origin}/api/v1/courses/${currentCourseID}/rubric_associations?rubric_association[association_type]=Assignment&rubric_association[association_id]=${this.id}&rubric_association[rubric_id]=${rubricID}&rubric_association[purpose]=grading`,
+      // method: "POST", // jQuery >= 1.9
+      type: "POST",
+    };
+
+    $.ajax( settings )
+    .done( data => { 
+      console.log('', data);
+      
+    })
+    .fail( (xhr, status, error) => {
+      console.error(`Failed to get API response.`, xhr, error);
+    });
+
   }
 
   // POST /api/v1/courses/82207/modules/{{moduleID}}/items?module_item[title]={{this.name}}&module_item[type]=Assignment&module_item[content_id]={{this.id}}&module_item[indent]={{indent}}
   createModuleItem(moduleID, indent = 1) {
-    console.log(this);
+    let settings = {
+      url: `${window.location.origin}/api/v1/courses/${currentCourseID}/modules/${moduleID}/items?module_item[title]=${this.name}&module_item[type]=Assignment&module_item[content_id]=${this.id}&module_item[indent]=${indent}`,
+      // method: "POST", // jQuery >= 1.9
+      type: "POST",
+    };
+
+    $.ajax( settings )
+    .done( data => { 
+      console.log('', data);
+
+    })
+    .fail( (xhr, status, error) => {
+      console.error(`Failed to get API response.`, xhr, error);
+    });
+
   }
 
 };
 
-
-let currentCourseID = null; // current course id.
-const barnardCollegeAccountID = ['439'], // Barnard's Canvas account.parent_account_id
-bc_middleStatesCourses = ["82207"]; // Courses considered for MS assessment
 
 /**
 * Fetch current course ID number.

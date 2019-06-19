@@ -239,71 +239,93 @@ bcms_assignment = class {
   
   constructor(name) {
     this.name = name;
+    createAssignment().then( value => console.log(value) )
   }
   
   // POST /api/v1/courses/82207/assignments?assignment[name]={{this.name}}&assignment[submission_types][]=none&assignment[published]=true&assignment[position]=1
-  createAssignment() {
-    let params = {
+  createAssignment(data) {
+    let assignmentData = {
       assignment: {
         name: this.name,
         published: true,
-        submission_types: { }
+        submission_types: { },
+        ...data
       }
     },
     settings = {
       url: `${window.location.origin}/api/v1/courses/${currentCourseID}/assignments`,
       // method: "POST", // jQuery >= 1.9
       type: "POST",
-      data: params
+      data: assignmentData
     };
 
     $.ajax( settings )
     .done( data => { 
       console.log('created assignment', data);
       this.id = data.id;
+      return data;
     })
     .fail( (xhr, status, error) => {
       console.error(`failed to create assignment: ${error}`, xhr);
+      throw new Error(xhr);
     });
 
   }
 
   // POST /api/v1/courses/82207/rubric_associations?rubric_association[association_type]=Assignment&rubric_association[association_id]={{this.id}}&rubric_association[rubric_id]={{int}}&rubric_association[purpose]=grading
-  associateRubric(rubricID) {
-    let settings = {
-      url: `${window.location.origin}/api/v1/courses/${currentCourseID}/rubric_associations?rubric_association[association_type]=Assignment&rubric_association[association_id]=${this.id}&rubric_association[rubric_id]=${rubricID}&rubric_association[purpose]=grading`,
+  associateRubric(rubricID, data) {
+    let rubricData = {
+      rubric_association: {
+        association_type: 'assignment',
+        association_id: this.id,
+        rubric_id: rubricID,
+        purpose: 'grading',
+        ...data
+      }
+    },
+    settings = {
+      url: `${window.location.origin}/api/v1/courses/${currentCourseID}/rubric_associations`,
       // method: "POST", // jQuery >= 1.9
       type: "POST",
+      data: rubricData,
     };
 
     $.ajax( settings )
     .done( data => { 
-      console.log('', data);
+      console.log('not bragging, but associated the rubric', data);
       
     })
     .fail( (xhr, status, error) => {
-      console.error(`Failed to get API response.`, xhr, error);
+      console.error(`this is why you don't brag, ${error}`, xhr);
     });
 
   }
 
   // POST /api/v1/courses/82207/modules/{{moduleID}}/items?module_item[title]={{this.name}}&module_item[type]=Assignment&module_item[content_id]={{this.id}}&module_item[indent]={{indent}}
-  createModuleItem(moduleID, indent = 1) {
-    let settings = {
-      url: `${window.location.origin}/api/v1/courses/${currentCourseID}/modules/${moduleID}/items?module_item[title]=${this.name}&module_item[type]=Assignment&module_item[content_id]=${this.id}&module_item[indent]=${indent}`,
+  createModuleItem(moduleID, indent = 1, data, settings) {
+    let moduleData = {
+      module_item: {
+        title: this.name,
+        content_id: this.id,
+        type: 'assignment',
+        indent: indent,
+        ...data
+      }
+    },
+    settings = {
+      url: `${window.location.origin}/api/v1/courses/${currentCourseID}/modules/${moduleID}/items`,
       // method: "POST", // jQuery >= 1.9
       type: "POST",
+      data: moduleData
     };
 
     $.ajax( settings )
     .done( data => { 
-      console.log('', data);
-
+      console.log('ok, created module item', data);
     })
     .fail( (xhr, status, error) => {
-      console.error(`Failed to get API response.`, xhr, error);
+      console.error(`failed to create module item with error ${error}`, xhr);
     });
-
   }
 
 };

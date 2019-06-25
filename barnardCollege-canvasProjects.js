@@ -5,23 +5,36 @@
 * Written for Barnard College.
 *
 * @date 2019-05-14
-* @modified 2019-06-11
+* @modified 2019-06-25
 * @author Benjamin Rosner, br2490
 * @author Marko Krkeljas, mk4200
 */
 
+let currentCourseID = null, // current course id.
+/**
+* The string representing the user's currently bcms_selectedRater user.
+* Will return 0 if no user is selected.
+*/
+bcms_selectedRater = localStorage.getItem("barnardRater") || '0';
 
-/********************************/
-/*********** GET DATA ***********/
-/********************************/
-
+const barnardCollegeAccountID = ['439'], // Barnard's Canvas account.parent_account_id
+bc_middleStatesCourses = ["82207"], // Courses considered for MS assessment
+bcms_assessments = [{ 
+  name: `${ENV.current_user.id} Oral Communication Assessment`,
+  rubric: 16108,
+  moduleLocation: 1,
+},
+{ 
+  name: `${ENV.current_user.id} Thinking Locally – New York City Assessment`,
+  rubric: 16111,
+  moduleLocation: 2,
+}];
 
 // Get term and course data
 function get_term_and_course_data() {
   // Temporary solution -- will update.
   $.ajaxSetup({ async: false });
-
-  const barnardCollegeAccountID = ['439']; // Barnard sub-account
+  
   let terms = {}; // object to hold terms
   let courses = []; // Array to hold courses
   $.getJSON(
@@ -39,7 +52,7 @@ function get_term_and_course_data() {
     }).fail( (xhr, status, error) => {
       console.error(`Failed to get API response. ${error}`);
     });
-
+  
     $.ajaxSetup({ async: true });
     return {terms, courses}
 }
@@ -51,30 +64,30 @@ function get_student_list(course_id) {
   try {
     if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader")
     return;
-
+    
     let students = []
-
-     $.getJSON(
+    
+    $.getJSON(
       `${window.location.origin}/api/v1/courses/${course_id}/enrollments`,
-        data => {
-          $.each(data, (key, value) => {
-            students.push({ 'id': value.user.id, 'name': value.user.name });
-          });
-        }).fail( (xhr, status, error) => {
-          console.error(`Failed to get API response. ${error}`);
+      data => {
+        $.each(data, (key, value) => {
+          students.push({ 'id': value.user.id, 'name': value.user.name });
         });
-        $.ajaxSetup({ async: true });
-        return students
-  } catch (e) {
-  console.error(e);
+      }).fail( (xhr, status, error) => {
+        console.error(`Failed to get API response. ${error}`);
+      });
+      $.ajaxSetup({ async: true });
+      return students
+    } catch (e) {
+      console.error(e);
+    }
   }
-}
-
-
-/**********************************************/
-/*********** CREATE SELECT ELEMENTS ***********/
-/**********************************************/
-
+  
+  
+  /**********************************************/
+  /*********** CREATE SELECT ELEMENTS ***********/
+  /**********************************************/
+  
 function bcms_createSpeedGraderSelects() {
   if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader")
   return;
@@ -100,14 +113,12 @@ function createTermSelect(terms) {
     term_select.append(createSelectOption( '0', 'Select Term'));
 
     $.each(terms, function(key, value) {   
-      term_select.append().append($("<option></option>")
-                     .attr("value", key)
-                     .text(value));
+      term_select.append().append($("<option></option>").attr("value", key).text(value));
     });
 
     term_select.appendTo('form#add_a_comment');
   } catch (e) {
-  console.error(e);
+    console.error(e);
   }
 }
 
@@ -116,11 +127,11 @@ function createTermSelect(terms) {
 function createCourseSelect() {
   try {
     let course_select = $( '<select />', {class: 'bc-ms', id: 'course-select'} );
-        course_select.append(createSelectOption( '0', 'Select Course'));
-        course_select.appendTo('form#add_a_comment');  
-
+    course_select.append(createSelectOption( '0', 'Select Course'));
+    course_select.appendTo('form#add_a_comment');  
+    
   } catch (e) {
-  console.error(e);
+    console.error(e);
   }
 }
 
@@ -129,11 +140,11 @@ function createCourseSelect() {
 function createStudentSelect() {
   try {
     let student_select = $( '<select />', {class: 'bc-ms', id: 'student-select'} );
-        student_select.append(createSelectOption( '0', 'Select Student'));
-        student_select.appendTo('form#add_a_comment');  
-
+    student_select.append(createSelectOption( '0', 'Select Student'));
+    student_select.appendTo('form#add_a_comment');  
+    
   } catch (e) {
-  console.error(e);
+    console.error(e);
   }
 }
 
@@ -156,13 +167,11 @@ function handleTermSelect(courses) {
       let filtered_courses = courses.filter(course => { return course.term == term_selected_id})
 
       $.each(filtered_courses, function(index, value) {
-        $("#course-select").append().append($("<option></option>")
-                    .attr("value", value.id)
-                    .text(value.name));
+        $("#course-select").append().append($("<option></option>").attr("value", value.id).text(value.name));
       })
     });
   } catch (e) {
-  console.error(e);
+    console.error(e);
   }
 }
 
@@ -176,66 +185,40 @@ function handleCourseSelect() {
       let students = get_student_list(course_selected_id)
 
       $.each(students, function(index, value) {
-        $("#student-select").append().append($("<option></option>")
-                    .attr("value", value.id)
-                    .text(value.name));
+        $("#student-select").append().append($("<option></option>").attr("value", value.id).text(value.name));
       })
     });
   } catch (e) {
-  console.error(e);
+    console.error(e);
   }
 }
-
+  
 function handleCommentBoxUpdate() {
   try {
     $('#course-select, #term-select, #student-select').change(function () {
-        let term_selected_id = $("#term-select option:selected").val();
-        let term_selected_text = $("#term-select option:selected").text();
-        
-        let course_selected_id = $("#course-select option:selected").val();
-        let course_selected_text = $("#course-select option:selected").text();
-        
-        let student_selected_id = $("#student-select option:selected").val();
-        let student_selected_text = $("#student-select option:selected").text();
-
-        if (term_selected_id != 0) {
-          let comment_box_text = [term_selected_text, course_selected_text, student_selected_text].join(" | ")
-          $(document).ready(function() {
-            $('#speed_grader_comment_textarea').val( comment_box_text )
-          });
-        } else { $('#speed_grader_comment_textarea').val(""); }
+      let term_selected_id = $("#term-select option:selected").val();
+      let term_selected_text = $("#term-select option:selected").text();
+      
+      let course_selected_id = $("#course-select option:selected").val();
+      let course_selected_text = $("#course-select option:selected").text();
+      
+      let student_selected_id = $("#student-select option:selected").val();
+      let student_selected_text = $("#student-select option:selected").text();
+      
+      if (term_selected_id != 0) {
+        let comment_box_text = [term_selected_text, course_selected_text, student_selected_text].join(" | ")
+        $(document).ready(function() {
+          $('#speed_grader_comment_textarea').val( comment_box_text )
+        });
+      } else { $('#speed_grader_comment_textarea').val(""); }
     });
   } catch (e) {
-  console.error(e);
+    console.error(e);
   }
 }
 
-
-/*********** Dev code end -- Marko K. ************/
-/*********** Dev code end -- Marko K. ************/
-/*********** Dev code end -- Marko K. ************/
-
-let currentCourseID = null; // current course id.
-const barnardCollegeAccountID = ['439'], // Barnard's Canvas account.parent_account_id
-bc_middleStatesCourses = ["82207"], // Courses considered for MS assessment
-
-// something like this?
-bcms_assessments = [
-  { 
-    name: `${ENV.current_user.id} Oral Communication Assessment`,
-    rubric: 16108,
-    moduleLocation: 1,
-  },
-  { 
-    name: `${ENV.current_user.id} Thinking Locally – New York City Assessment`,
-    rubric: 16111,
-    moduleLocation: 2,
-  },
-  {
-
-  }],
 // Middle State assessment object, create an assignment and do work.
-bcms_assignment = class { 
+let bcms_assignment = class { 
   
   constructor(name) {
     this.name = name;
@@ -246,7 +229,7 @@ bcms_assignment = class {
     await this.associateRubric(rubricId);
     await this.createModuleItem(moduleLocation);
   }
-
+  
   async makeRequest(requestSettings) {
     try {
       const data = await $.ajax( requestSettings );
@@ -273,14 +256,14 @@ bcms_assignment = class {
       type: "POST",
       data: assignmentData
     };
-
+    
     result = await this.makeRequest(settings);
     if (result.id)
-      this.id = result.id;
+    this.id = result.id;
     else
-      throw new Error('');
+    throw new Error('');
   }
-
+  
   // POST /api/v1/courses/82207/rubric_associations?rubric_association[association_type]=Assignment&rubric_association[association_id]={{this.id}}&rubric_association[rubric_id]={{int}}&rubric_association[purpose]=grading
   async associateRubric(rubricID, data) {
     let result,
@@ -299,12 +282,12 @@ bcms_assignment = class {
       type: "POST",
       data: rubricData,
     };
-
+    
     result = await this.makeRequest(settings);
     console.log(result);
     this.associatedRubric = result.rubric_settings.id;
   }
-
+  
   // POST /api/v1/courses/82207/modules/{{moduleID}}/items?module_item[title]={{this.name}}&module_item[type]=Assignment&module_item[content_id]={{this.id}}&module_item[indent]={{indent}}
   async createModuleItem(moduleID, indent = 1, data) {
     let result,
@@ -323,29 +306,16 @@ bcms_assignment = class {
       type: "POST",
       data: moduleData
     };
-
+    
     result = await this.makeRequest(settings);
     console.log(result);
     // this.moduleItemId = result.id;
   }
-
+  
 };
 
 
-/**
-* Fetch current course ID number.
-* @return {string} current course ID from location.
-*/
-function bc_getCourseID() {
-  try {
-    if (location.pathname.match(/\/courses\//))
-    return location.pathname.match(/\/courses\/(\d*)/)[1];
-    else
-    return null;
-  } catch(e){
-    console.error(`Could not get course ID. ${e}`);
-  }
-}
+
 
 /**
 * Update the rubric preview CSS to align.
@@ -354,7 +324,7 @@ function bc_getCourseID() {
 function bc_fixRubricAlignment() {
   try {
     if (!ENV.ASSIGNMENT_ID) return;
-
+    
     let tableRows = $("table.ratings");
     tableRows.each((pos, data) => { 
       let row = $(data); 
@@ -366,12 +336,6 @@ function bc_fixRubricAlignment() {
     console.error(`Could not find/resize rubric. ${e}`);
   }
 }
-
-/**
-* The string representing the user's currently bcms_selectedRater user.
-* Will return 0 if no user is selected.
-*/
-let bcms_selectedRater = localStorage.getItem("barnardRater") || '0';
 
 /**
 * Add a dropdown containing a list of "raters" for users to select. Selection hides
@@ -396,7 +360,7 @@ function bcms_addRaterSelectToPage() {
       let currentRater = `Rater ${o}`;
       select.append(createSelectOption( currentRater, currentRater, (currentRater === bcms_selectedRater) ));
     }
-   
+    
     // Handle change.
     select.change(() => {
       $( '#rater-dropdown option:selected' ).each(function() { // nb: this is not a multiple-enabled select.
@@ -421,18 +385,20 @@ function bcms_addRaterSelectToPage() {
   }
 }
 
+
 /**
 * Open the full rubric grading view in Canvas' Speed Grader.
 * @param  {int} interval - timer interval ms
 */
-let bc_openRubricView = ( (interval = 50) => {
-  let rubric_view = $('#rubric_full');
-  let button_full_rubric_view = $('button.toggle_full_rubric.edit.btn');
+let bc_openRubricView = (interval = 150) => {
+  let rubric_view = $('#rubric_full'),
+  button_full_rubric_view = $('button.toggle_full_rubric.edit.btn');
   setInterval(() => { 
     if (rubric_view.css('display') === "none")
     button_full_rubric_view.click();
   }, interval);
-});
+}
+
 
 /**
 * Resize the Speed Grader view to display the entire rubric without being cramped.
@@ -449,6 +415,7 @@ function bcms_resizeSpeedGraderView(leftWidth = '25%', rightWidth = '75%') {
     console.error(e);
   }
 }
+
 
 /**
 * Modify the Comment box to "Student Name"
@@ -476,9 +443,10 @@ function bcms_updateSpeedGraderCommentBox() {
   }
 }
 
+
 /**
- * Add button to save and view the next student in Speed Grader.
- */
+* Add button to save and view the next student in Speed Grader.
+*/
 function bcms_addSpeedGraderSaveNextButton() {
   try {
     if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader") return;
@@ -528,91 +496,60 @@ function bcms_promptDirectToSpeedGrader() {
   });
 }
 
+/**
+* Fetch current course ID number.
+* @return {string} current course ID from location.
+*/
+function bc_getCourseID() {
+  try {
+    if (location.pathname.match(/\/courses\//))
+    return location.pathname.match(/\/courses\/(\d*)/)[1];
+    else
+    return null;
+  } catch(e){
+    console.error(`Could not get course ID. ${e}`);
+  }
+}
 
 /**
-* IN DEVELOPMENT.
+* 
+* @param {*} str_value 
+* @param {*} str_text 
+* @param {*} selected 
+* @param  {...any} optional 
 */
-function bcms_getCourseList() { 
-  const barnardCollegeAccountID = ['439']; // Barnard sub-account
-  let terms = {}; // object to hold terms
-  let courses = {}; // object to hold courses
+function createSelectOption(str_value, str_text, selected = false, optional) {
+  return $('<option />', {
+    value: str_value,
+    text: str_text,
+    selected: selected,
+    ...optional
+  });
+}
+
+// Aggregate them all. This should be a class/obj (not this function, the whole ^)
+function aggBarnardMiddleStates() {
+  bc_fixRubricAlignment();
   
-  let termSelect = $( '<select />', {class: 'bc-ms', id: 'term-dropdown', 'selectedIndex': 0} );  
-  termSelect.append(createSelectOption(0, 'Select a Term', true));
+  bcms_addRaterSelectToPage();
+  bcms_addSpeedGraderSaveNextButton();
+  bcms_resizeSpeedGraderView();
+  bcms_updateSpeedGraderCommentBox();
+  bcms_promptDirectToSpeedGrader();
   
-  let courseSelect = $( '<select />', {class: 'bc-ms', id: 'course-dropdown', 'selectedIndex': 0} );  
-  courseSelect.append(createSelectOption(0, 'Select a Course', true));
-  
-  $.getJSON(
-    // Canvas course API,
-    `${window.location.origin}/api/v1/users/${ENV.current_user.id}/courses?include[]=term&include[]=account&per_page=150`, 
-    // results as data.
-    data => {
-      $.each(data, (key, value) => {
-        if ( !barnardCollegeAccountID.includes(value.account.parent_account_id) ) return; // Continue with Barnard Courses.
-        
-        // There can be duplicate terms since we're starting at the COURSE level.
-        if ( !terms[value.term.id] ) { 
-          terms[value.term.id] = value.term.name; // while this will only hold unique values,
-          termSelect.append(createSelectOption(value.term.id, value.term.name, false)); // this will dupe, so only pass wyn.
-        }
-        
-        // Create the course options:
-        courses[value.id] = {'name': value.name, 'term': value.term.id};
-        courseSelect.append(createSelectOption(value.id, value.name, false));
-      });
-      
-      // debug
-      console.log(terms, courses, courseSelect, termSelect);
-      $('body').append(termSelect);
-      $('body').append(courseSelect);
-      
-    }).fail( (xhr, status, error) => {
-      console.error(`Failed to get API response. ${error}`);
-    });
-  }
+  bcms_createSpeedGraderSelects();
+}
 
-
-  /**
-  * 
-  * @param {*} str_value 
-  * @param {*} str_text 
-  * @param {*} selected 
-  * @param  {...any} optional 
-  */
-  function createSelectOption(str_value, str_text, selected = false, optional) {
-    return $('<option />', {
-      value: str_value,
-      text: str_text,
-      selected: selected,
-      ...optional
-    });
-  }
-  
-  // Aggregate them all. This should be a class/obj (not this function, the whole ^)
-  function aggBarnardMiddleStates() {
-    bc_fixRubricAlignment();
-    
-    bcms_addRaterSelectToPage();
-    bcms_addSpeedGraderSaveNextButton();
-    bcms_resizeSpeedGraderView();
-    bcms_updateSpeedGraderCommentBox();
-    bcms_promptDirectToSpeedGrader();
-
-    bcms_createSpeedGraderSelects();
-
-  }
-
-  /**
-  * Document ready.
-  */
-  try {
-    $( document ).ready(function() {
-      currentCourseID = bc_getCourseID();
-      if ( bc_middleStatesCourses.includes(currentCourseID) ) {
-        aggBarnardMiddleStates();
-      }
-    });
-  } catch( e ) {
-    console.error(`document.ready(): ${e}`);
-  }
+/**
+* Document ready.
+*/
+try {
+  $( document ).ready(function() {
+    currentCourseID = bc_getCourseID();
+    if ( bc_middleStatesCourses.includes(currentCourseID) ) {
+      aggBarnardMiddleStates();
+    }
+  });
+} catch( e ) {
+  console.error(`document.ready(): ${e}`);
+}

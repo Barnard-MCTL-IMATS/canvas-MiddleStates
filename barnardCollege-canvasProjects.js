@@ -222,12 +222,12 @@ bc_middleStatesCourses = ["82207"], // Courses considered for MS assessment
 // something like this?
 bcms_assessments = [
   { 
-    name: 'Oral Communication Assessment',
+    name: `${ENV.current_user.id} Oral Communication Assessment`,
     rubric: 16108,
     moduleLocation: 1,
   },
   { 
-    name: 'Thinking Locally – New York City Assessment',
+    name: `${ENV.current_user.id} Thinking Locally – New York City Assessment`,
     rubric: 16111,
     moduleLocation: 2,
   },
@@ -239,12 +239,27 @@ bcms_assignment = class {
   
   constructor(name) {
     this.name = name;
-    createAssignment().then( value => console.log(value) )
+  }
+  
+  middlestates(rubricId, moduleLocation) {
+    await this.createAssignment();
+    await this.associateRubric(rubricId);
+    await this.createModuleItem(moduleLocation);
+  }
+
+  async makeRequest(requestSettings) {
+    try {
+      const data = await $.ajax( requestSettings );
+      return data;
+    } catch (err) {
+      console.log(err)
+    }
   }
   
   // POST /api/v1/courses/82207/assignments?assignment[name]={{this.name}}&assignment[submission_types][]=none&assignment[published]=true&assignment[position]=1
-  createAssignment(data) {
-    let assignmentData = {
+  async createAssignment(data) {
+    let result, 
+    assignmentData = {
       assignment: {
         name: this.name,
         published: true,
@@ -259,22 +274,17 @@ bcms_assignment = class {
       data: assignmentData
     };
 
-    $.ajax( settings )
-    .done( data => { 
-      console.log('created assignment', data);
-      this.id = data.id;
-      return data;
-    })
-    .fail( (xhr, status, error) => {
-      console.error(`failed to create assignment: ${error}`, xhr);
-      throw new Error(xhr);
-    });
-
+    result = await this.makeRequest(settings);
+    if (result.id)
+      this.id = result.id;
+    else
+      throw new Error('');
   }
 
   // POST /api/v1/courses/82207/rubric_associations?rubric_association[association_type]=Assignment&rubric_association[association_id]={{this.id}}&rubric_association[rubric_id]={{int}}&rubric_association[purpose]=grading
-  associateRubric(rubricID, data) {
-    let rubricData = {
+  async associateRubric(rubricID, data) {
+    let result,
+    rubricData = {
       rubric_association: {
         association_type: 'assignment',
         association_id: this.id,
@@ -290,20 +300,15 @@ bcms_assignment = class {
       data: rubricData,
     };
 
-    $.ajax( settings )
-    .done( data => { 
-      console.log('not bragging, but associated the rubric', data);
-      
-    })
-    .fail( (xhr, status, error) => {
-      console.error(`this is why you don't brag, ${error}`, xhr);
-    });
-
+    result = await this.makeRequest(settings);
+    console.log(result);
+    this.associatedRubric = result.rubric_settings.id;
   }
 
   // POST /api/v1/courses/82207/modules/{{moduleID}}/items?module_item[title]={{this.name}}&module_item[type]=Assignment&module_item[content_id]={{this.id}}&module_item[indent]={{indent}}
-  createModuleItem(moduleID, indent = 1, data, settings) {
-    let moduleData = {
+  async createModuleItem(moduleID, indent = 1, data) {
+    let result,
+    moduleData = {
       module_item: {
         title: this.name,
         content_id: this.id,
@@ -319,13 +324,9 @@ bcms_assignment = class {
       data: moduleData
     };
 
-    $.ajax( settings )
-    .done( data => { 
-      console.log('ok, created module item', data);
-    })
-    .fail( (xhr, status, error) => {
-      console.error(`failed to create module item with error ${error}`, xhr);
-    });
+    result = await this.makeRequest(settings);
+    console.log(result);
+    // this.moduleItemId = result.id;
   }
 
 };
@@ -352,9 +353,8 @@ function bc_getCourseID() {
 */
 function bc_fixRubricAlignment() {
   try {
-    if (!ENV.ASSIGNMENT_ID) {
-      return;
-    }
+    if (!ENV.ASSIGNMENT_ID) return;
+
     let tableRows = $("table.ratings");
     tableRows.each((pos, data) => { 
       let row = $(data); 
@@ -440,8 +440,7 @@ let bc_openRubricView = ( (interval = 50) => {
 */
 function bcms_resizeSpeedGraderView(leftWidth = '25%', rightWidth = '75%') {
   try {
-    if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader")
-    return;
+    if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader") return;
     
     let width_resizer = $('#full_width_container');
     width_resizer.find('#left_side').css('width', leftWidth);
@@ -459,8 +458,7 @@ function bcms_resizeSpeedGraderView(leftWidth = '25%', rightWidth = '75%') {
 */
 function bcms_updateSpeedGraderCommentBox() {
   try {
-    if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader")
-    return;
+    if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader") return;
     
     // Quickly open the rubric to marking (rating) mode.
     bc_openRubricView(150);
@@ -483,8 +481,7 @@ function bcms_updateSpeedGraderCommentBox() {
  */
 function bcms_addSpeedGraderSaveNextButton() {
   try {
-    if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader")
-    return;
+    if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader") return;
     
     $( '<button />' , {
       id: 'bcms_save_and_next_student',
@@ -583,7 +580,7 @@ function bcms_getCourseList() {
   * @param {*} selected 
   * @param  {...any} optional 
   */
-  function createSelectOption(str_value, str_text, selected = false, ...optional) {
+  function createSelectOption(str_value, str_text, selected = false, optional) {
     return $('<option />', {
       value: str_value,
       text: str_text,
@@ -596,7 +593,6 @@ function bcms_getCourseList() {
   function aggBarnardMiddleStates() {
     bc_fixRubricAlignment();
     
-    // @todo: create object, run these
     bcms_addRaterSelectToPage();
     bcms_addSpeedGraderSaveNextButton();
     bcms_resizeSpeedGraderView();

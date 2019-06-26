@@ -20,14 +20,22 @@ bcms_selectedRater = localStorage.getItem("barnardRater") || '0';
 const barnardCollegeAccountID = ['439'], // Barnard's Canvas account.parent_account_id
 bc_middleStatesCourses = ["82207"], // Courses considered for MS assessment
 bcms_assessments = [{ 
+  name: `${ENV.current_user.id} Written Communication Assessment`,
+  assignment_group_id: 103736,
+  rubric: 16050,
+  moduleLocation: 2,
+},
+{ 
   name: `${ENV.current_user.id} Oral Communication Assessment`,
+  assignment_group_id: 103737,
   rubric: 16108,
-  moduleLocation: 1,
+  moduleLocation: 3,
 },
 { 
   name: `${ENV.current_user.id} Thinking Locally – New York City Assessment`,
+  assignment_group_id: 103740,
   rubric: 16111,
-  moduleLocation: 2,
+  moduleLocation: 6,
 }];
 
 // Get term and course data
@@ -224,12 +232,22 @@ let bcms_assignment = class {
     this.name = name;
   }
   
-  middlestates(rubricId, moduleLocation) {
-    await this.createAssignment();
+  /**
+   * 
+   * @param {int} assignmentGroup 
+   * @param {int} rubricId 
+   * @param {int} moduleLocation 
+   */
+  async middlestates(assignmentGroup, rubricId, moduleLocation) {
+    await this.createAssignment(assignmentGroup);
     await this.associateRubric(rubricId);
     await this.createModuleItem(moduleLocation);
   }
   
+  /**
+   * 
+   * @param {obj} requestSettings - url, type, and data payload.
+   */
   async makeRequest(requestSettings) {
     try {
       const data = await $.ajax( requestSettings );
@@ -239,14 +257,14 @@ let bcms_assignment = class {
     }
   }
   
-  // POST /api/v1/courses/82207/assignments?assignment[name]={{this.name}}&assignment[submission_types][]=none&assignment[published]=true&assignment[position]=1
-  async createAssignment(data) {
+  async createAssignment(assignmentGroup, data) {
     let result, 
     assignmentData = {
       assignment: {
         name: this.name,
         published: true,
         submission_types: { },
+        assignment_group_id: assignmentGroup,
         ...data
       }
     },
@@ -264,7 +282,6 @@ let bcms_assignment = class {
     throw new Error('');
   }
   
-  // POST /api/v1/courses/82207/rubric_associations?rubric_association[association_type]=Assignment&rubric_association[association_id]={{this.id}}&rubric_association[rubric_id]={{int}}&rubric_association[purpose]=grading
   async associateRubric(rubricID, data) {
     let result,
     rubricData = {
@@ -288,7 +305,6 @@ let bcms_assignment = class {
     this.associatedRubric = result.rubric_settings.id;
   }
   
-  // POST /api/v1/courses/82207/modules/{{moduleID}}/items?module_item[title]={{this.name}}&module_item[type]=Assignment&module_item[content_id]={{this.id}}&module_item[indent]={{indent}}
   async createModuleItem(moduleID, indent = 1, data) {
     let result,
     moduleData = {

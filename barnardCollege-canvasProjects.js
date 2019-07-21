@@ -20,22 +20,25 @@ bcms_selectedRater = localStorage.getItem("barnardRater") || '0';
 const barnardCollegeAccountID = ['439'], // Barnard's Canvas account.parent_account_id
 bc_middleStatesCourses = ["82207"], // Courses considered for MS assessment
 bcms_assessments = [{ 
-  name: `${ENV.current_user.id} Written Communication Assessment`,
-  assignment_group_id: 103736,
+  name: `Written Communication Assessment (${ENV.current_user.id})`,
+  assignmentGroupId: 103736,
   rubric: 16050,
-  moduleLocation: 2,
+  moduleLocation: 112428,
+  pos: 2
 },
 { 
-  name: `${ENV.current_user.id} Oral Communication Assessment`,
-  assignment_group_id: 103737,
+  name: `Oral Communication Assessment (${ENV.current_user.id})`,
+  assignmentGroupId: 103737,
   rubric: 16108,
-  moduleLocation: 3,
+  moduleLocation: 120965,
+  pos: 3
 },
 { 
-  name: `${ENV.current_user.id} Thinking Locally – New York City Assessment`,
-  assignment_group_id: 103740,
+  name: `Thinking Locally – New York City Assessment (${ENV.current_user.id})`,
+  assignmentGroupId: 103740,
   rubric: 16111,
-  moduleLocation: 6,
+  moduleLocation: 120966,
+  pos: 6
 }];
 
 // Get term and course data
@@ -183,7 +186,6 @@ function handleTermSelect(courses) {
   }
 }
 
-
 function handleCourseSelect() {
   try {
     $("#course-select").change(function(){
@@ -229,15 +231,16 @@ function handleCommentBoxUpdate() {
 let bcms_assignment = class { 
   
   constructor(name) {
-    this.name = name;
+    this.name = name
   }
   
-  /**
-   * 
-   * @param {int} assignmentGroup 
-   * @param {int} rubricId 
-   * @param {int} moduleLocation 
-   */
+/**
+ * 
+ * @param {int} assignmentGroup 
+ * @param {int} assignmentPosition 
+ * @param {int} rubricId 
+ * @param {int} moduleLocation 
+ */
   async middlestates(assignmentGroup, rubricId, moduleLocation) {
     await this.createAssignment(assignmentGroup);
     await this.associateRubric(rubricId);
@@ -286,7 +289,7 @@ let bcms_assignment = class {
     let result,
     rubricData = {
       rubric_association: {
-        association_type: 'assignment',
+        association_type: 'Assignment',
         association_id: this.id,
         rubric_id: rubricID,
         purpose: 'grading',
@@ -302,7 +305,7 @@ let bcms_assignment = class {
     
     result = await this.makeRequest(settings);
     console.log(result);
-    this.associatedRubric = result.rubric_settings.id;
+    // this.associatedRubric = result.rubric_settings.id;
   }
   
   async createModuleItem(moduleID, indent = 1, data) {
@@ -311,7 +314,7 @@ let bcms_assignment = class {
       module_item: {
         title: this.name,
         content_id: this.id,
-        type: 'assignment',
+        type: 'Assignment',
         indent: indent,
         ...data
       }
@@ -325,13 +328,67 @@ let bcms_assignment = class {
     
     result = await this.makeRequest(settings);
     console.log(result);
-    // this.moduleItemId = result.id;
+    this.moduleItemId = result.id;
   }
   
 };
 
+/**
+ * This will handle creation of Middle States assignments. In development.
+ */
+function bcms_createAssignments() {
 
+  let stateChange = false,
+  limit = $('.ig-list'),
+  user = ENV.current_user.id,
+  assignments = $(`div.module-item-title > span > a:contains(\(${user}\))`); // the limiting parent of $.parentsUntil();
 
+  $(`div.module-item-title > span > a:contains("Assessment"):not(:contains(${user}))`).parentsUntil( limit, 'li' ).hide();
+  assignments.parentsUntil( limit, 'li' ).show();
+  $('#context_module_item_blank').hide();
+
+  if ( assignments.length >= 3 ) return;
+
+  bcms_assessments.forEach(assessment => { 
+    let existing = $(`a:contains("${assessment.name}")`)
+    
+    if ( existing.length ) {
+      console.log(`Passing by ${assessment.name}`);
+      return;
+    }
+
+    let assess = new bcms_assignment(assessment.name);
+    assess.createAssignment(assessment.assignmentGroupId, assessment.pos)
+    .then( () => { assess.createModuleItem(assessment.moduleLocation) } )
+    .then( () => { assess.associateRubric(assessment.rubric) } )
+    
+    stateChange = true;
+  });
+
+  if (stateChange) {
+    setInterval("window.location.reload();", 2500); // Okay.
+  }
+}
+
+/**
+ * This is not needed but is in use for development.
+ */
+function bcms_createAssignmentsButton() {
+  try {    
+    $( '<button />' , {
+      id: 'bcms_createAssignments',
+      class: 'Button Button--primary bcms_create_assignments',
+      type: 'button',
+      text: 'Create and configure assignments.',
+      style: 'margin-left:3px'
+    }).on("click", e => {
+      $(e.target).hide();
+      bcms_createAssignments(); // that wasn't very exciting.
+    }).appendTo('.header-bar');
+  } catch (e) {
+    console.error(e);
+  }
+}
 
 /**
 * Update the rubric preview CSS to align.
@@ -352,55 +409,6 @@ function bc_fixRubricAlignment() {
     console.error(`Could not find/resize rubric. ${e}`);
   }
 }
-
-/**
-* Add a dropdown containing a list of "raters" for users to select. Selection hides
-* all other assignments on the page.
-* @return {[type]} [description]
-*/
-function bcms_addRaterSelectToPage() {
-  try {
-    // Are we on the course's Module page?
-    if ( !$( '#context_modules' ).length )
-    return; // we are not, so this function can not continue.
-    
-    // Create dropdown.
-    let max = 8, // max number of users @todo make global
-    limit = $('.ig-list'), // the limiting parent of $.parentsUntil();
-    select = $( '<select />', {class: 'bc-ms', id: 'rater-dropdown'} );
-    
-    // Our initial option.
-    select.append(createSelectOption( '0', 'Select Your Professor ID', (bcms_selectedRater === '0') ));
-    
-    for (let o = 1; o <= max; o++) { // o for option.
-      let currentRater = `Rater ${o}`;
-      select.append(createSelectOption( currentRater, currentRater, (currentRater === bcms_selectedRater) ));
-    }
-    
-    // Handle change.
-    select.change(() => {
-      $( '#rater-dropdown option:selected' ).each(function() { // nb: this is not a multiple-enabled select.
-        bcms_selectedRater = $( this ).val();
-        localStorage.setItem( 'barnardRater' , bcms_selectedRater);
-        if (bcms_selectedRater === '0') {
-          $('div.module-item-title > span > a').parentsUntil( limit, 'li' ).show();
-        } else {
-          $('div.module-item-title > span > a:contains(Rater):not(:contains(' + bcms_selectedRater + '))').parentsUntil( limit, 'li' ).hide();
-          $('div.module-item-title > span > a:contains(' + bcms_selectedRater + ')').parentsUntil( limit, 'li' ).show();
-        }
-        $('#context_module_item_blank').hide();
-      });
-    })
-    .change();
-    
-    select.appendTo('.header-bar'); // Append,
-    select.change();                // and trigger.
-    
-  } catch ( e ) {
-    console.error(`Error @bcms_addRaterSelectToPage(): ${e}`);
-  }
-}
-
 
 /**
 * Open the full rubric grading view in Canvas' Speed Grader.
@@ -547,12 +555,13 @@ function createSelectOption(str_value, str_text, selected = false, optional) {
 function aggBarnardMiddleStates() {
   bc_fixRubricAlignment();
   
-  bcms_addRaterSelectToPage();
-  bcms_addSpeedGraderSaveNextButton();
+  // bcms_createAssignmentsButton();
+  // bcms_createAssignments();
+   
+  bcms_promptDirectToSpeedGrader();
   bcms_resizeSpeedGraderView();
   bcms_updateSpeedGraderCommentBox();
-  bcms_promptDirectToSpeedGrader();
-  
+  bcms_addSpeedGraderSaveNextButton();
   bcms_createSpeedGraderSelects();
 }
 

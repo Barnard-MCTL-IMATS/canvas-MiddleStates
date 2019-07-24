@@ -5,7 +5,7 @@
 * Written for Barnard College.
 *
 * @date 2019-05-14
-* @modified 2019-06-25
+* @modified 2019-07-24
 * @author Benjamin Rosner, br2490
 * @author Marko Krkeljas, mk4200
 */
@@ -99,7 +99,7 @@ function get_student_list(course_id) {
   /*********** CREATE SELECT ELEMENTS ***********/
   /**********************************************/
   
-function bcms_createSpeedGraderSelects() {
+function bcms_createcourseConfiguredSelects() {
   if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader")
   return;
 
@@ -333,13 +333,8 @@ let bcms_assignment = class {
   
 };
 
-/**
- * This will handle creation of Middle States assignments. In development.
- */
-function bcms_createAssignments() {
-
-  let stateChange = false,
-  limit = $('.ig-list'),
+function bcms_userCourseConfiguration() {
+  let limit = $('.ig-list'),
   user = ENV.current_user.id,
   assignments = $(`div.module-item-title > span > a:contains(\(${user}\))`); // the limiting parent of $.parentsUntil();
 
@@ -347,8 +342,20 @@ function bcms_createAssignments() {
   assignments.parentsUntil( limit, 'li' ).show();
   $('#context_module_item_blank').hide();
 
+  // Create assignments if they do not exist.
   if ( assignments.length >= 3 ) return;
 
+  // Do work.
+  let build = bcms_createAssignments();
+  // Prompt.
+  if ( build ) bcms_promptCourseHelp();
+}
+
+/**
+ * This will handle creation of Middle States assignments. In development.
+ */
+function bcms_createAssignments() {
+  let stateChange = false;
   bcms_assessments.forEach(assessment => { 
     let existing = $(`a:contains("${assessment.name}")`)
     
@@ -358,32 +365,31 @@ function bcms_createAssignments() {
     }
 
     let assess = new bcms_assignment(assessment.name);
-    assess.createAssignment(assessment.assignmentGroupId, assessment.pos)
-    .then( () => { assess.createModuleItem(assessment.moduleLocation) } )
-    .then( () => { assess.associateRubric(assessment.rubric) } )
+
+    console.log(assess);
+    // assess.createAssignment(assessment.assignmentGroupId, assessment.pos)
+    // .then( () => { assess.createModuleItem(assessment.moduleLocation) } )
+    // .then( () => { assess.associateRubric(assessment.rubric) } )
     
     stateChange = true;
   });
 
-  if (stateChange) {
-    setInterval("window.location.reload();", 2500); // Okay.
-  }
+  return stateChange;
 }
 
 /**
  * This is not needed but is in use for development.
  */
-function bcms_createAssignmentsButton() {
+function bcms_getHelpButton() {
   try {    
     $( '<button />' , {
       id: 'bcms_createAssignments',
-      class: 'Button Button--primary bcms_create_assignments',
+      class: 'Button Button--primary bcms_help_button',
       type: 'button',
-      text: 'Create and configure assignments.',
+      text: 'Help Page',
       style: 'margin-left:3px'
     }).on("click", e => {
-      $(e.target).hide();
-      bcms_createAssignments(); // that wasn't very exciting.
+      //not implemented
     }).appendTo('.header-bar');
   } catch (e) {
     console.error(e);
@@ -428,7 +434,7 @@ let bc_openRubricView = (interval = 150) => {
 * Resize the Speed Grader view to display the entire rubric without being cramped.
 * @return {void} will exit function if not on an assignment page.
 */
-function bcms_resizeSpeedGraderView(leftWidth = '25%', rightWidth = '75%') {
+function bcms_resizecourseConfiguredView(leftWidth = '25%', rightWidth = '75%') {
   try {
     if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader") return;
     
@@ -447,7 +453,7 @@ function bcms_resizeSpeedGraderView(leftWidth = '25%', rightWidth = '75%') {
 *
 * @return {void} will exit function if not on an assignment page.
 */
-function bcms_updateSpeedGraderCommentBox() {
+function bcms_updatecourseConfiguredCommentBox() {
   try {
     if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader") return;
     
@@ -467,11 +473,10 @@ function bcms_updateSpeedGraderCommentBox() {
   }
 }
 
-
 /**
 * Add button to save and view the next student in Speed Grader.
 */
-function bcms_addSpeedGraderSaveNextButton() {
+function bcms_addcourseConfiguredSaveNextButton() {
   try {
     if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader") return;
     
@@ -493,17 +498,44 @@ function bcms_addSpeedGraderSaveNextButton() {
   }
 }
 
+/**
+* Welcome Prompt
+*/
+let bcms_promptCourseHelp = () => {
+  $('<div id="dialog-courseConfigured" title="Barnard Middle States GER Assessment Site">\
+  <p>Welcome to Barnard Middle States GER Assessment Site. This site is designed so that each faculty\
+  rater has access submit Middle States GER assessments through Canvas\' speedgrader.</p>\
+  <p><span class="ui-icon ui-icon-extlink" style="float:left; margin:0 0 20px 0;"></span>\
+  Instructions on how to use this site for assessment are available here.</p></div>')
+  .insertAfter('#main');
+  
+  $( "#dialog-courseConfigured" ).dialog({
+    resizable: false,
+    height: "auto",
+    width: 480,
+    modal: true,
+    buttons: {
+      "Continue": function() {
+        $( this ).dialog( "close" );
+        window.location.reload();
+      },
+      Cancel: function() {
+        $( this ).dialog( "close" );
+      }
+    }
+  });
+}
 
 /**
 * Prompt user to view the Speed Grader section of an assignment
 */
-function bcms_promptDirectToSpeedGrader() {
-  if ( !$('#assignment-speedgrader-link').length ) return;
-  $('<div id="dialog-speedgrader" title="Open the Speed Grader?">\
+let bcms_promptDirectTocourseConfigured = () => {
+  if ( !$('#assignment-courseConfigured-link').length ) return;
+  $('<div id="dialog-courseConfigured" title="Open the Speed Grader?">\
   <p><span class="ui-icon ui-icon-extlink" style="float:left; margin:0 0 20px 0;"></span>Open the assessment screen (i.e., Speed Grader)?</p>\
   </div>').insertAfter('#main');
   
-  $( "#dialog-speedgrader" ).dialog({
+  $( "#dialog-courseConfigured" ).dialog({
     resizable: false,
     height: "auto",
     width: 400,
@@ -511,7 +543,7 @@ function bcms_promptDirectToSpeedGrader() {
     buttons: {
       "Open Assessment": function() {
         $( this ).dialog( "close" );
-        $('#assignment-speedgrader-link > a')[0].click();
+        $('#assignment-courseConfigured-link > a')[0].click();
       },
       Cancel: function() {
         $( this ).dialog( "close" );
@@ -551,18 +583,16 @@ function createSelectOption(str_value, str_text, selected = false, optional) {
   });
 }
 
-// Aggregate them all. This should be a class/obj (not this function, the whole ^)
 function aggBarnardMiddleStates() {
   bc_fixRubricAlignment();
   
-  // bcms_createAssignmentsButton();
-  // bcms_createAssignments();
+  // bcms_getHelpButton();
    
-  bcms_promptDirectToSpeedGrader();
-  bcms_resizeSpeedGraderView();
-  bcms_updateSpeedGraderCommentBox();
-  bcms_addSpeedGraderSaveNextButton();
-  bcms_createSpeedGraderSelects();
+  bcms_promptDirectTocourseConfigured();
+  bcms_resizecourseConfiguredView();
+  bcms_updatecourseConfiguredCommentBox();
+  bcms_addcourseConfiguredSaveNextButton();
+  bcms_createcourseConfiguredSelects();
 }
 
 /**

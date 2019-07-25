@@ -5,7 +5,7 @@
 * Written for Barnard College.
 *
 * @date 2019-05-14
-* @modified 2019-07-24
+* @modified 2019-07-25
 * @author Benjamin Rosner, br2490
 * @author Marko Krkeljas, mk4200
 */
@@ -19,26 +19,75 @@ bcms_selectedRater = localStorage.getItem("barnardRater") || '0';
 
 const barnardCollegeAccountID = ['439'], // Barnard's Canvas account.parent_account_id
 bc_middleStatesCourses = ["82207"], // Courses considered for MS assessment
-bcms_assessments = [{ 
-  name: `Written Communication Assessment (${ENV.current_user.id})`,
-  assignmentGroupId: 103736,
-  rubric: 16050,
-  moduleLocation: 112428,
-  pos: 2
+bcms_assessments = [{
+	name: `Written Communication Assessment (${ENV.current_user.id})`,
+	assignmentGroupId: 103736,
+	rubric: 16050,
+	moduleLocation: 112428,
+	pos: 2,
 },
-{ 
-  name: `Oral Communication Assessment (${ENV.current_user.id})`,
-  assignmentGroupId: 103737,
-  rubric: 16108,
-  moduleLocation: 120965,
-  pos: 3
+{
+	name: `Oral Communication Assessment (${ENV.current_user.id})`,
+	assignmentGroupId: 103737,
+	rubric: 16108,
+	moduleLocation: 120965,
+	pos: 3,
 },
-{ 
-  name: `Thinking Locally – New York City Assessment (${ENV.current_user.id})`,
-  assignmentGroupId: 103740,
-  rubric: 16111,
-  moduleLocation: 120966,
-  pos: 6
+{
+	name: `Critical Analysis and Reasoning Assessment (${ENV.current_user.id})`,
+	assignmentGroupId: 103738,
+	rubric: 16109,
+	moduleLocation: 112431,
+	pos: 4,
+},
+{
+	name: `Information Literacy Assessment (${ENV.current_user.id})`,
+	assignmentGroupId: 103739,
+	rubric: 16110,
+	moduleLocation: 112430,
+	pos: 5,
+},
+{
+	name: `Thinking Locally -- New York City Assessment (${ENV.current_user.id})`,
+	assignmentGroupId: 103740,
+	rubric: 16111,
+	moduleLocation: 120966,
+	pos: 6,
+},
+{
+	name: `Thinking Through Global Inquiry Assessment (${ENV.current_user.id})`,
+	assignmentGroupId: 103741,
+	rubric: 16112,
+	moduleLocation: 120967,
+	pos: 7,
+},
+{
+	name: `Thinking about Social Difference Assessment (${ENV.current_user.id})`,
+	assignmentGroupId: 103742,
+	rubric: 16113,
+	moduleLocation: 112434,
+	pos: 8,
+},
+{
+	name: `Thinking with Historical Perspective Assessment (${ENV.current_user.id})`,
+	assignmentGroupId: 103743,
+	rubric: 16114,
+	moduleLocation: 120968,
+	pos: 9,
+},
+{
+	name: `Thinking Quantitatively and Empirically Assessment (${ENV.current_user.id})`,
+	assignmentGroupId: 103744,
+	rubric: 16115,
+	moduleLocation: 112432,
+	pos: 10,
+},
+{
+	name: `Thinking Technologically and Digitally Assessment (${ENV.current_user.id})`,
+	assignmentGroupId: 103745,
+	rubric: 16116,
+	moduleLocation: 120969,
+	pos: 11,
 }];
 
 // Get term and course data
@@ -99,7 +148,7 @@ function get_student_list(course_id) {
   /*********** CREATE SELECT ELEMENTS ***********/
   /**********************************************/
   
-function bcms_createcourseConfiguredSelects() {
+function bcms_addSpeedGraderStudentSelects() {
   if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader")
   return;
 
@@ -242,6 +291,8 @@ let bcms_assignment = class {
  * @param {int} moduleLocation 
  */
   async middlestates(assignmentGroup, rubricId, moduleLocation) {
+    if ( this.checkAssignment() ) return;
+
     await this.createAssignment(assignmentGroup);
     await this.associateRubric(rubricId);
     await this.createModuleItem(moduleLocation);
@@ -258,6 +309,22 @@ let bcms_assignment = class {
     } catch (err) {
       console.log(err)
     }
+  }
+
+  async checkAssignment() {
+    let result = [], 
+    searchParams = {
+      search_term: this.name,
+    },
+    settings = {
+      url: `${window.location.origin}/api/v1/courses/${currentCourseID}/assignments`,
+      type: "GET",
+      data: searchParams
+    };
+
+    result = await this.makeRequest(settings);
+
+    return result.length;
   }
   
   async createAssignment(assignmentGroup, data) {
@@ -304,7 +371,6 @@ let bcms_assignment = class {
     };
     
     result = await this.makeRequest(settings);
-    console.log(result);
     // this.associatedRubric = result.rubric_settings.id;
   }
   
@@ -333,7 +399,10 @@ let bcms_assignment = class {
   
 };
 
-function bcms_userCourseConfiguration() {
+async function bcms_userCourseConfiguration() {
+  if ( !$('body.home').length ) return; // Ditch if we are not on the homepage of the course.
+
+  // Hide everything else but this users assignments.
   let limit = $('.ig-list'),
   user = ENV.current_user.id,
   assignments = $(`div.module-item-title > span > a:contains(\(${user}\))`); // the limiting parent of $.parentsUntil();
@@ -342,39 +411,37 @@ function bcms_userCourseConfiguration() {
   assignments.parentsUntil( limit, 'li' ).show();
   $('#context_module_item_blank').hide();
 
-  // Create assignments if they do not exist.
-  if ( assignments.length >= 3 ) return;
-
-  // Do work.
-  let build = bcms_createAssignments();
-  // Prompt.
-  if ( build ) bcms_promptCourseHelp();
+  // And create assignments if they do not exist.
+  if ( assignments.length >= 10 ) return;
+  let result = await bcms_createAssignments();
+  console.log('result b', result);
 }
 
 /**
- * This will handle creation of Middle States assignments. In development.
+ * This will handle creation of Middle States assignments.
  */
 function bcms_createAssignments() {
   let stateChange = false;
-  bcms_assessments.forEach(assessment => { 
-    let existing = $(`a:contains("${assessment.name}")`)
-    
-    if ( existing.length ) {
-      console.log(`Passing by ${assessment.name}`);
-      return;
-    }
 
-    let assess = new bcms_assignment(assessment.name);
+  bcms_assessments.forEach(assessment => {
+    let assess = new bcms_assignment(assessment.name),
+    existing = assess.checkAssignment();
 
-    console.log(assess);
-    // assess.createAssignment(assessment.assignmentGroupId, assessment.pos)
-    // .then( () => { assess.createModuleItem(assessment.moduleLocation) } )
-    // .then( () => { assess.associateRubric(assessment.rubric) } )
-    
-    stateChange = true;
+    existing.then( assign => { 
+      if ( assign ) {
+        console.log(`Assessment exists: ${assessment.name}`);
+      } else {
+        console.log(`Creating assessment: ${assessment.name}`);
+
+        assess.createAssignment(assessment.assignmentGroupId, assessment.pos)
+        .then( () => { assess.createModuleItem(assessment.moduleLocation) } )
+        .then( () => { assess.associateRubric(assessment.rubric) } )
+
+        stateChange = true;
+      }
+    });
   });
-
-  return stateChange;
+  return Promise.resolve(stateChange);
 }
 
 /**
@@ -423,18 +490,19 @@ function bc_fixRubricAlignment() {
 let bc_openRubricView = (interval = 150) => {
   let rubric_view = $('#rubric_full'),
   button_full_rubric_view = $('button.toggle_full_rubric.edit.btn');
-  setInterval(() => { 
-    if (rubric_view.css('display') === "none")
-    button_full_rubric_view.click();
+  setInterval(() => {
+    if (rubric_view.css('display') === "none") {
+      button_full_rubric_view.click();
+      clearInterval(this);
+    }
   }, interval);
 }
-
 
 /**
 * Resize the Speed Grader view to display the entire rubric without being cramped.
 * @return {void} will exit function if not on an assignment page.
 */
-function bcms_resizecourseConfiguredView(leftWidth = '25%', rightWidth = '75%') {
+function bcms_resizeSpeedGraderView(leftWidth = '25%', rightWidth = '75%') {
   try {
     if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader") return;
     
@@ -453,7 +521,7 @@ function bcms_resizecourseConfiguredView(leftWidth = '25%', rightWidth = '75%') 
 *
 * @return {void} will exit function if not on an assignment page.
 */
-function bcms_updatecourseConfiguredCommentBox() {
+function bcms_updateSpeedGraderCommentBox() {
   try {
     if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader") return;
     
@@ -476,7 +544,7 @@ function bcms_updatecourseConfiguredCommentBox() {
 /**
 * Add button to save and view the next student in Speed Grader.
 */
-function bcms_addcourseConfiguredSaveNextButton() {
+function bcms_addSpeedGraderSaveNextButton() {
   try {
     if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader") return;
     
@@ -501,15 +569,16 @@ function bcms_addcourseConfiguredSaveNextButton() {
 /**
 * Welcome Prompt
 */
-let bcms_promptCourseHelp = () => {
+function bcms_promptCourseHelp() {
   $('<div id="dialog-courseConfigured" title="Barnard Middle States GER Assessment Site">\
-  <p>Welcome to Barnard Middle States GER Assessment Site. This site is designed so that each faculty\
-  rater has access submit Middle States GER assessments through Canvas\' speedgrader.</p>\
+  <p>Welcome to the Barnard Middle States GER Assessment Site. This site is designed so that BC\
+  faculty can quickly submit Middle States GER assessments through the Canvas\' speedgrader.</p>\
+  <p>The course has been configured and the page must reload. Please select continue to finish.\
+  You will only see this notice once.</p>\
   <p><span class="ui-icon ui-icon-extlink" style="float:left; margin:0 0 20px 0;"></span>\
-  Instructions on how to use this site for assessment are available here.</p></div>')
-  .insertAfter('#main');
-  
-  $( "#dialog-courseConfigured" ).dialog({
+  Instructions on how to use this site for assessment are available here.</p>\
+  </div>')
+  .dialog({
     resizable: false,
     height: "auto",
     width: 480,
@@ -529,13 +598,15 @@ let bcms_promptCourseHelp = () => {
 /**
 * Prompt user to view the Speed Grader section of an assignment
 */
-let bcms_promptDirectTocourseConfigured = () => {
-  if ( !$('#assignment-courseConfigured-link').length ) return;
-  $('<div id="dialog-courseConfigured" title="Open the Speed Grader?">\
+function bcms_promptDirectToSpeedGrader() {
+  let link = $("#assignment-speedgrader-link > a");
+  if ( !link.length ) return; //return if we're not on an assignment.
+
+  // link.attr('target', '_self'); //target = self, not blank.
+  $('<div id="dialog-directToSpeedGrader" title="Open the Speed Grader?">\
   <p><span class="ui-icon ui-icon-extlink" style="float:left; margin:0 0 20px 0;"></span>Open the assessment screen (i.e., Speed Grader)?</p>\
-  </div>').insertAfter('#main');
-  
-  $( "#dialog-courseConfigured" ).dialog({
+  </div>')
+  .dialog({
     resizable: false,
     height: "auto",
     width: 400,
@@ -543,7 +614,7 @@ let bcms_promptDirectTocourseConfigured = () => {
     buttons: {
       "Open Assessment": function() {
         $( this ).dialog( "close" );
-        $('#assignment-courseConfigured-link > a')[0].click();
+        link.click();
       },
       Cancel: function() {
         $( this ).dialog( "close" );
@@ -585,14 +656,16 @@ function createSelectOption(str_value, str_text, selected = false, optional) {
 
 function aggBarnardMiddleStates() {
   bc_fixRubricAlignment();
-  
+
+  bcms_userCourseConfiguration(); //configure assignments.
   // bcms_getHelpButton();
-   
-  bcms_promptDirectTocourseConfigured();
-  bcms_resizecourseConfiguredView();
-  bcms_updatecourseConfiguredCommentBox();
-  bcms_addcourseConfiguredSaveNextButton();
-  bcms_createcourseConfiguredSelects();
+  
+  bcms_promptDirectToSpeedGrader();
+  bcms_addSpeedGraderStudentSelects();
+
+  bcms_resizeSpeedGraderView();
+  bcms_updateSpeedGraderCommentBox();
+  bcms_addSpeedGraderSaveNextButton();
 }
 
 /**

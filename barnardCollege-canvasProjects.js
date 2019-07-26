@@ -291,11 +291,13 @@ let bcms_assignment = class {
  * @param {int} moduleLocation 
  */
   async middlestates(assignmentGroup, rubricId, moduleLocation) {
-    if ( this.checkAssignment() ) return;
+    if ( this.checkAssignment() ) return false;
 
     await this.createAssignment(assignmentGroup);
     await this.associateRubric(rubricId);
     await this.createModuleItem(moduleLocation);
+
+    return true;
   }
   
   /**
@@ -400,7 +402,7 @@ let bcms_assignment = class {
 };
 
 async function bcms_userCourseConfiguration() {
-  if ( !$('body.home').length ) return; // Ditch if we are not on the homepage of the course.
+  if ( !$('body.home').length ) return null; // Ditch if we are not on the homepage of the course.
 
   // Hide everything else but this users assignments.
   let limit = $('.ig-list'),
@@ -412,18 +414,24 @@ async function bcms_userCourseConfiguration() {
   $('#context_module_item_blank').hide();
 
   // And create assignments if they do not exist.
-  if ( assignments.length >= 10 ) return;
-  let result = await bcms_createAssignments();
-  console.log('result b', result);
+  if ( assignments.length >= 10 ) return null;
+
+  let assign = await bcms_createAssignments();
+  
+  // So I'd really like to wait for the results from createAssignments
+  // before deciding whether or not to prompt the user. I cannot figure it out.
+  // These functions -_-.... -BR
+  console.log('result b', assign);
+  setTimeout( () => { bcms_promptCourseHelp(); }, 500);
 }
 
 /**
  * This will handle creation of Middle States assignments.
  */
-function bcms_createAssignments() {
+async function bcms_createAssignments() {
   let stateChange = false;
 
-  bcms_assessments.forEach(assessment => {
+  bcms_assessments.forEach( assessment => {
     let assess = new bcms_assignment(assessment.name),
     existing = assess.checkAssignment();
 
@@ -441,7 +449,7 @@ function bcms_createAssignments() {
       }
     });
   });
-  return Promise.resolve(stateChange);
+  return stateChange;
 }
 
 /**
@@ -601,26 +609,28 @@ function bcms_promptCourseHelp() {
 function bcms_promptDirectToSpeedGrader() {
   let link = $("#assignment-speedgrader-link > a");
   if ( !link.length ) return; //return if we're not on an assignment.
-
+  
   // link.attr('target', '_self'); //target = self, not blank.
-  $('<div id="dialog-directToSpeedGrader" title="Open the Speed Grader?">\
+  let prompt = $('<div id="dialog-directToSpeedGrader" title="Open the Speed Grader?">\
   <p><span class="ui-icon ui-icon-extlink" style="float:left; margin:0 0 20px 0;"></span>Open the assessment screen (i.e., Speed Grader)?</p>\
-  </div>')
-  .dialog({
-    resizable: false,
-    height: "auto",
-    width: 400,
-    modal: true,
-    buttons: {
-      "Open Assessment": function() {
-        $( this ).dialog( "close" );
-        link.click();
-      },
-      Cancel: function() {
-        $( this ).dialog( "close" );
+  </div>');
+  setTimeout( () => {
+    prompt.dialog({
+      resizable: false,
+      height: "auto",
+      width: 400,
+      modal: true,
+      buttons: {
+        "Open Assessment": function() {
+          $( this ).dialog( "close" );
+          link.click();
+        },
+        Cancel: function() {
+          $( this ).dialog( "close" );
+        }
       }
-    }
-  });
+    });
+  }, 250)
 }
 
 /**

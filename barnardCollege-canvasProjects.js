@@ -365,6 +365,7 @@ let bcms_assignment = class {
         association_type: 'Assignment',
         association_id: this.id,
         rubric_id: rubricID,
+        use_for_grading: true,
         purpose: 'grading',
         ...data
       }

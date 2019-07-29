@@ -168,15 +168,16 @@ function bcms_addSpeedGraderStudentSelects() {
 
 // Create term select object; populate with terms.
 function createTermSelect(terms) {
-  try {  
-    let term_select = $( '<select />', {class: 'bc-ms', id: 'term-select'} );
+  try { 
+    let helperText = $('<span />', {class: 'bc-ms-helper', style: 'padding-left: 3px', text: 'Term: ' } ),
+    term_select = $( '<select />', {class: 'bc-ms', id: 'term-select'} );
     term_select.append(createSelectOption( '0', 'Select Term'));
 
     $.each(terms, function(key, value) {   
       term_select.append().append($("<option></option>").attr("value", key).text(value));
     });
-
-    term_select.appendTo('form#add_a_comment');
+    helperText.appendTo('#discussion');
+    term_select.appendTo('#discussion');
   } catch (e) {
     console.error(e);
   }
@@ -186,10 +187,11 @@ function createTermSelect(terms) {
 // Create course select object.
 function createCourseSelect() {
   try {
-    let course_select = $( '<select />', {class: 'bc-ms', id: 'course-select'} );
+    let helperText = $('<span />', {class: 'bc-ms-helper', style: 'padding-left: 3px', text: 'Course: ' } ),
+    course_select = $( '<select />', {class: 'bc-ms', id: 'course-select'} );
     course_select.append(createSelectOption( '0', 'Select Course'));
-    course_select.appendTo('form#add_a_comment');  
-    
+    helperText.appendTo('#discussion');
+    course_select.appendTo('#discussion'); 
   } catch (e) {
     console.error(e);
   }
@@ -199,9 +201,11 @@ function createCourseSelect() {
 // Create student select object.
 function createStudentSelect() {
   try {
-    let student_select = $( '<select />', {class: 'bc-ms', id: 'student-select'} );
+    let helperText = $('<span />', {class: 'bc-ms-helper', style: 'padding-left: 3px', text: 'Student: ' } ),
+    student_select = $( '<select />', {class: 'bc-ms', id: 'student-select'} );
     student_select.append(createSelectOption( '0', 'Select Student'));
-    student_select.appendTo('form#add_a_comment');  
+    helperText.appendTo('#discussion');
+    student_select.appendTo('#discussion');  
     
   } catch (e) {
     console.error(e);

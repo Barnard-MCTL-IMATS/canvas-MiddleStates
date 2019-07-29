@@ -515,13 +515,21 @@ let bc_openRubricView = (interval = 150) => {
 * Resize the Speed Grader view to display the entire rubric without being cramped.
 * @return {void} will exit function if not on an assignment page.
 */
-function bcms_resizeSpeedGraderView(leftWidth = '25%', rightWidth = '75%') {
+function bcms_resizeSpeedGraderView(leftWidth = '0%', rightWidth = '100%') {
   try {
     if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader") return;
-    
+
     let width_resizer = $('#full_width_container');
+
+    if (leftWidth === "0%") {
+      $('#left_side').hide();
+      $('#width_resizer').hide();
+      $('#rubric_full_resizer').hide();
+    }
+
     width_resizer.find('#left_side').css('width', leftWidth);
     width_resizer.find('#right_side').css('width', rightWidth);
+
   } catch (e) {
     console.error(e);
   }

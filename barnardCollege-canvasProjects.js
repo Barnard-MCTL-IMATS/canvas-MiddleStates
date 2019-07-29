@@ -563,10 +563,11 @@ function bcms_addSpeedGraderSaveNextButton() {
       text: 'Save and Next Student',
       style: 'margin-left:3px'
     }).on("click", event => {
-      $('button#comment_submit_button').click();
+      $('button#comment_submit_button').trigger("click");
+      $("button.save_rubric_button.Button.Button--primary").trigger("click");
       setTimeout( () => {
-        $('.icon-arrow-right.next').click();
-      }, 250);
+        $('.icon-arrow-right.next').trigger("click");
+      }, 750);
     }).insertAfter('button.save_rubric_button.Button.Button--primary');
     
   } catch (e) {
@@ -579,12 +580,11 @@ function bcms_addSpeedGraderSaveNextButton() {
 */
 function bcms_promptCourseHelp() {
   $('<div id="dialog-courseConfigured" title="Barnard Middle States GER Assessment Site">\
-  <p>Welcome to the Barnard Middle States GER Assessment Site. This site is designed so that BC\
-  faculty can quickly submit Middle States GER assessments through the Canvas\' speedgrader.</p>\
-  <p>The course has been configured and the page must reload. Please select continue to finish.\
+  <p>Welcome to the Barnard Middle States GER Assessment Site. This site is designed so that Barnard\
+  faculty can submit assessments through the Canvas\' SpeedGrader.</p>\
+  <p>Instructions for how to use this course are available in the introductory (top-most) module.</p>\
+  <p>The course has been configured and the page must reload. Please select Continue to finish.\
   You will only see this notice once.</p>\
-  <p><span class="ui-icon ui-icon-extlink" style="float:left; margin:0 0 20px 0;"></span>\
-  Instructions on how to use this site for assessment are available here.</p>\
   </div>')
   .dialog({
     resizable: false,
@@ -623,7 +623,7 @@ function bcms_promptDirectToSpeedGrader() {
       buttons: {
         "Open Assessment": function() {
           $( this ).dialog( "close" );
-          link.click();
+          document.querySelector("#assignment-speedgrader-link > a").click();
         },
         Cancel: function() {
           $( this ).dialog( "close" );
@@ -665,6 +665,8 @@ function createSelectOption(str_value, str_text, selected = false, optional) {
 }
 
 function aggBarnardMiddleStates() {
+  setTimeout( () => $('#sequence_footer').hide(), 1000);
+
   bc_fixRubricAlignment();
 
   bcms_userCourseConfiguration(); //configure assignments.

@@ -5,17 +5,12 @@
 * Written for Barnard College.
 *
 * @date 2019-05-14
-* @modified 2019-07-25
+* @modified 2019-07-29
 * @author Benjamin Rosner, br2490
 * @author Marko Krkeljas, mk4200
 */
 
-let currentCourseID = null, // current course id.
-/**
-* The string representing the user's currently bcms_selectedRater user.
-* Will return 0 if no user is selected.
-*/
-bcms_selectedRater = localStorage.getItem("barnardRater") || '0';
+let currentCourseID = null; // current course id.
 
 const barnardCollegeAccountID = ['439'], // Barnard's Canvas account.parent_account_id
 bc_middleStatesCourses = ["82207"], // Courses considered for MS assessment

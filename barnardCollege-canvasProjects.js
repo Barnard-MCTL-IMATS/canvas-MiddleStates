@@ -154,17 +154,20 @@ function bcms_addSpeedGraderStudentSelects() {
   var result = get_term_and_course_data()
   var terms = result.terms;
   var courses = result.courses;
-  // console.log(result, terms, courses);
 
-  addEventToSaveButton();
+  $("button.save_rubric_button.Button.Button--primary").hide();
+
+  
   addEventToCommentBox();
   createTermSelect(terms);
   createCourseSelect();
   createStudentSelect();
-  createAssignmentSelect();
+  createAssignmentInput();
+  createInputNotification();
   handleTermSelect(courses);
   handleCourseSelect();
   handleCommentBoxUpdate();
+  handleAssignmentInput()
 }
 
 // Create term select object; populate with terms.
@@ -213,6 +216,88 @@ function createStudentSelect() {
   }
 }
 
+// Create assignment input.
+function createAssignmentInput() {
+  try {
+    let helperText = $('<span />', {class: 'bc-ms-helper', style: 'padding-left: 3px', text: 'Assignment: ' } ),
+    assignment_input = $( '<input />', {class: 'bc-ms', id: 'assignment-input'} );
+    helperText.appendTo('#discussion');
+    assignment_input.appendTo('#discussion'); 
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+
+function getInputs() {
+  let term = $("#term-select option:selected").val();
+  let course = $("#course-select option:selected").val(); 
+  let student = $("#student-select option:selected").val();
+  let assignment = $("#assignment-input").val();
+  let inputs = [{'type': 'Term', 'value': term},
+                {'type': 'Course', 'value': course},
+                {'type': 'Student', 'value': student},
+                {'type': 'Assignment', 'value': assignment}]
+
+  return inputs
+}
+
+function createInputNotification() {
+  let inputs = getInputs()
+  let unselected_inputs = []
+
+  $.each(inputs, function(index, value) {
+          if (value.value == "0" || value.value == "") {
+            unselected_inputs.push(value.type)
+          }
+    });
+
+  let unselected_text = unselected_inputs.join(", ")  
+  let please_choose_p = $('<p/>', {id: 'input-notification-pc', 'text': "Please Choose: "})
+  let unselected_p = $('<p/>', {id: 'input-notification-message', 'text': unselected_text, style: 'color: red'})
+      
+  please_choose_p.appendTo('#discussion');
+  unselected_p.appendTo('#discussion');
+}
+
+
+function updateInputNotification() {
+      let inputs = getInputs()
+      let unselected_inputs = []
+
+      $.each(inputs, function(index, value) {
+          if (value.value == "0" || value.value == "") {
+            unselected_inputs.push(value.type)
+          }
+      });
+
+      if (unselected_inputs.length > 0) {
+          let unselected_text = unselected_inputs.join(", ")
+          $("#input-notification-message").text(unselected_text);
+      } else {
+        $("#input-notification-pc").text("");
+        $("#input-notification-message").text("");
+      }
+
+}
+
+function updateInputNotificationOnSaveAndNext() {
+      let inputs = getInputs()
+      let unselected_inputs = []
+
+      $.each(inputs, function(index, value) {
+          if (value.value == "0" || value.value == "") {
+            unselected_inputs.push(value.type)
+          }
+      });
+
+      let unselected_text = unselected_inputs.join(", ")
+
+      $("#input-notification-pc").text("Please Choose: ");
+      $("#input-notification-message").text(unselected_text);
+}
+
+/*
 
 // Create assignment select object.
 function createAssignmentSelect() {
@@ -232,6 +317,9 @@ function createAssignmentSelect() {
     console.error(e);
   }
 }
+
+*/
+
 
 /*********************************************/
 /*********** HANDLE SELECT CHANGES ***********/
@@ -253,6 +341,7 @@ function handleTermSelect(courses) {
       $.each(filtered_courses, function(index, value) {
         $("#course-select").append().append($("<option></option>").attr("value", value.id).text(value.name));
       })
+      updateInputNotification()
     });
   } catch (e) {
     console.error(e);
@@ -270,6 +359,7 @@ function handleCourseSelect() {
       $.each(students, function(index, value) {
         $("#student-select").append().append($("<option></option>").attr("value", value.id).text(value.name));
       })
+      updateInputNotification()
     });
   } catch (e) {
     console.error(e);
@@ -278,7 +368,7 @@ function handleCourseSelect() {
   
 function handleCommentBoxUpdate() {
   try {
-    $('#course-select, #term-select, #student-select, #assignment-select').change(function () {
+    $('#course-select, #term-select, #student-select, #assignment-input').change(function () {
       let term_selected_id = $("#term-select option:selected").val();
       let term_selected_text = $("#term-select option:selected").text();
       
@@ -288,20 +378,27 @@ function handleCommentBoxUpdate() {
       let student_selected_id = $("#student-select option:selected").val();
       let student_selected_text = $("#student-select option:selected").text();
 
-      let assignment_selected_id = $("#assignment-select option:selected").val();
-      let assignment_selected_text = $("#assignment-select option:selected").text();
+      let assignment_input = $("#assignment-input").val();
       
       if (term_selected_id != 0) {
-        let comment_box_text = [term_selected_text, course_selected_text, student_selected_text, assignment_selected_text].join(" | ")
+        let comment_box_text = [term_selected_text, course_selected_text, student_selected_text, assignment_input].join(" | ")
         $(document).ready(function() {
           $('#speed_grader_comment_textarea').val( comment_box_text )
+            updateInputNotification()
         });
-      } else { $('#speed_grader_comment_textarea').val(""); }
+      } else { $('#speed_grader_comment_textarea').val(""); updateInputNotification(); }
     });
   } catch (e) {
     console.error(e);
   }
 }
+
+function handleAssignmentInput() {
+    $('#assignment-input').on('change', function() {
+        handleCommentBoxUpdate()
+    });
+}
+
 
 
 /***************************************/
@@ -333,7 +430,7 @@ function clearSelectOptions() {
       document.getElementById('term-select').selectedIndex = 0;
       document.getElementById('course-select').selectedIndex = 0;
       document.getElementById('student-select').selectedIndex = 0;
-      document.getElementById('assignment-select').selectedIndex = 0;
+      $('#assignment-input').val('');
 }
 
 
@@ -341,9 +438,6 @@ function addEventToCommentBox(){
     let comment_box = document.getElementById('speed_grader_comment_textarea');
         comment_box = addEventListener("change", checkValidity, false)
 }
-
-
-
 
 
 
@@ -646,6 +740,7 @@ function bcms_addSpeedGraderSaveNextButton() {
       $('button#comment_submit_button').trigger("click");
       $("button.save_rubric_button.Button.Button--primary").trigger("click");
       clearSelectOptions()
+      updateInputNotificationOnSaveAndNext()
       setTimeout( () => {
         $('.icon-arrow-right.next').trigger("click");
       }, 750);

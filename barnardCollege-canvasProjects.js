@@ -158,7 +158,7 @@ function bcms_addSpeedGraderStudentSelects() {
   $("button.save_rubric_button.Button.Button--primary").hide();
 
   
-  addEventToCommentBox();
+  // addEventToCommentBox();
   createTermSelect(terms);
   createCourseSelect();
   createStudentSelect();

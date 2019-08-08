@@ -405,6 +405,7 @@ function handleAssignmentInput() {
 /*********** FORM VALIDATION ***********/
 /***************************************/
 
+/*
 
 function checkValidity(){
     var elem = document.getElementById('speed_grader_comment_textarea');
@@ -425,18 +426,20 @@ function checkValidity(){
     }
 }
 
+
+function addEventToCommentBox(){
+    let comment_box = document.getElementById('speed_grader_comment_textarea');
+        comment_box = addEventListener("change", checkValidity, false)
+}
+
+*/
+
 // Called in: bcms_addSpeedGraderSaveNextButton
 function clearSelectOptions() {
       document.getElementById('term-select').selectedIndex = 0;
       document.getElementById('course-select').selectedIndex = 0;
       document.getElementById('student-select').selectedIndex = 0;
       $('#assignment-input').val('');
-}
-
-
-function addEventToCommentBox(){
-    let comment_box = document.getElementById('speed_grader_comment_textarea');
-        comment_box = addEventListener("change", checkValidity, false)
 }
 
 

@@ -120,13 +120,16 @@ function get_student_list(course_id) {
     if (ENV.CONTEXT_ACTION_SOURCE !== "speed_grader")
     return;
     
+    // DesignerEnrollment (153), StudentEnrollment, ObserverEnrollment (155)
+    let roles = ['ObserverEnrollment']
     let students = []
     
     $.getJSON(
       `${window.location.origin}/api/v1/courses/${course_id}/enrollments`,
       data => {
-        $.each(data, (key, value) => {
-          students.push({ 'id': value.user.id, 'name': value.user.name });
+        $.each(data, (key, value) => {          
+          let role = value.role;
+          if (roles.includes(role)) { students.push({ 'id': value.user.id, 'name': value.user.name }) }
         });
       }).fail( (xhr, status, error) => {
         console.error(`Failed to get API response. ${error}`);
@@ -151,14 +154,20 @@ function bcms_addSpeedGraderStudentSelects() {
   var result = get_term_and_course_data()
   var terms = result.terms;
   var courses = result.courses;
-  // console.log(result, terms, courses);
 
+  $("button.save_rubric_button.Button.Button--primary").hide();
+
+  
+  // addEventToCommentBox();
   createTermSelect(terms);
   createCourseSelect();
   createStudentSelect();
+  createAssignmentInput();
+  createInputNotification();
   handleTermSelect(courses);
   handleCourseSelect();
   handleCommentBoxUpdate();
+  handleAssignmentInput()
 }
 
 // Create term select object; populate with terms.
@@ -207,6 +216,110 @@ function createStudentSelect() {
   }
 }
 
+// Create assignment input.
+function createAssignmentInput() {
+  try {
+    let helperText = $('<span />', {class: 'bc-ms-helper', style: 'padding-left: 3px', text: 'Assignment: ' } ),
+    assignment_input = $( '<input />', {class: 'bc-ms', id: 'assignment-input'} );
+    helperText.appendTo('#discussion');
+    assignment_input.appendTo('#discussion'); 
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+
+function getInputs() {
+  let term = $("#term-select option:selected").val();
+  let course = $("#course-select option:selected").val(); 
+  let student = $("#student-select option:selected").val();
+  let assignment = $("#assignment-input").val();
+  let inputs = [{'type': 'Term', 'value': term},
+                {'type': 'Course', 'value': course},
+                {'type': 'Student', 'value': student},
+                {'type': 'Assignment', 'value': assignment}]
+
+  return inputs
+}
+
+function createInputNotification() {
+  let inputs = getInputs()
+  let unselected_inputs = []
+
+  $.each(inputs, function(index, value) {
+          if (value.value == "0" || value.value == "") {
+            unselected_inputs.push(value.type)
+          }
+    });
+
+  let unselected_text = unselected_inputs.join(", ")  
+  let please_choose_p = $('<p/>', {id: 'input-notification-pc', 'text': "Please Choose: "})
+  let unselected_p = $('<p/>', {id: 'input-notification-message', 'text': unselected_text, style: 'color: red'})
+      
+  please_choose_p.appendTo('#discussion');
+  unselected_p.appendTo('#discussion');
+}
+
+
+function updateInputNotification() {
+      let inputs = getInputs()
+      let unselected_inputs = []
+
+      $.each(inputs, function(index, value) {
+          if (value.value == "0" || value.value == "") {
+            unselected_inputs.push(value.type)
+          }
+      });
+
+      if (unselected_inputs.length > 0) {
+          let unselected_text = unselected_inputs.join(", ")
+          $("#input-notification-message").text(unselected_text);
+      } else {
+        $("#input-notification-pc").text("");
+        $("#input-notification-message").text("");
+      }
+
+}
+
+function updateInputNotificationOnSaveAndNext() {
+      let inputs = getInputs()
+      let unselected_inputs = []
+
+      $.each(inputs, function(index, value) {
+          if (value.value == "0" || value.value == "") {
+            unselected_inputs.push(value.type)
+          }
+      });
+
+      let unselected_text = unselected_inputs.join(", ")
+
+      $("#input-notification-pc").text("Please Choose: ");
+      $("#input-notification-message").text(unselected_text);
+}
+
+/*
+
+// Create assignment select object.
+function createAssignmentSelect() {
+  try {
+    let helperText = $('<span />', {class: 'bc-ms-helper', style: 'padding-left: 3px', text: 'Assignment: ' } ),
+    assignment_select = $( '<select />', {class: 'bc-ms', id: 'assignment-select'} );
+    assignment_select.append(createSelectOption( '0', 'Select Assignment'));
+    
+    let assignments = { '1': 'Term-Paper', '2': 'Quiz', '3': 'Mid-Term', '4': 'Final' }
+    $.each(assignments, function(key, value) {   
+      assignment_select.append().append($("<option></option>").attr("value", key).text(value));
+    });
+
+    helperText.appendTo('#discussion');
+    assignment_select.appendTo('#discussion'); 
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+*/
+
 
 /*********************************************/
 /*********** HANDLE SELECT CHANGES ***********/
@@ -217,17 +330,18 @@ function createStudentSelect() {
 // ToDos: update value attribute w/ course IDs
 function handleTermSelect(courses) {
   try {
-    $("#term-select").change(function(){
+    $("#term-select").change(function() {
       // Empty select on change.
       $('#course-select').empty().append(createSelectOption('0', 'Select Course'))
       $('#student-select').empty().append(createSelectOption('0', 'Select Student'))
       
       let term_selected_id = $(this).val();
-      let filtered_courses = courses.filter(course => { return course.term == term_selected_id})
+      let filtered_courses = courses.filter(course => { return course.term == term_selected_id })
 
       $.each(filtered_courses, function(index, value) {
         $("#course-select").append().append($("<option></option>").attr("value", value.id).text(value.name));
       })
+      updateInputNotification()
     });
   } catch (e) {
     console.error(e);
@@ -243,8 +357,11 @@ function handleCourseSelect() {
       let students = get_student_list(course_selected_id)
 
       $.each(students, function(index, value) {
-        $("#student-select").append().append($("<option></option>").attr("value", value.id).text(value.name));
+        // $("#student-select").append().append($("<option></option>").attr("value", value.id).text(value.name));
+        $("#student-select").append().append(createSelectOption(value.id, value.name));
       })
+      
+      updateInputNotification()
     });
   } catch (e) {
     console.error(e);
@@ -253,7 +370,7 @@ function handleCourseSelect() {
   
 function handleCommentBoxUpdate() {
   try {
-    $('#course-select, #term-select, #student-select').change(function () {
+    $('#course-select, #term-select, #student-select, #assignment-input').change(function () {
       let term_selected_id = $("#term-select option:selected").val();
       let term_selected_text = $("#term-select option:selected").text();
       
@@ -262,18 +379,70 @@ function handleCommentBoxUpdate() {
       
       let student_selected_id = $("#student-select option:selected").val();
       let student_selected_text = $("#student-select option:selected").text();
+
+      let assignment_input = $("#assignment-input").val();
       
       if (term_selected_id != 0) {
-        let comment_box_text = [term_selected_text, course_selected_text, student_selected_text].join(" | ")
+        let comment_box_text = [term_selected_text, course_selected_text, student_selected_text, assignment_input].join(" | ")
         $(document).ready(function() {
           $('#speed_grader_comment_textarea').val( comment_box_text )
+            updateInputNotification()
         });
-      } else { $('#speed_grader_comment_textarea').val(""); }
+      } else { $('#speed_grader_comment_textarea').val(""); updateInputNotification(); }
     });
   } catch (e) {
     console.error(e);
   }
 }
+
+function handleAssignmentInput() {
+    $('#assignment-input').on('change', function() {
+        handleCommentBoxUpdate()
+    });
+}
+
+/***************************************/
+/*********** FORM VALIDATION ***********/
+/***************************************/
+
+/*
+
+function checkValidity(){
+    var elem = document.getElementById('speed_grader_comment_textarea');
+    let term_selected_val = parseInt($("#term-select option:selected").val());
+    let course_selected_val = parseInt($("#course-select option:selected").val());
+    let student_selected_val = parseInt($("#student-select option:selected").val());
+    let assignment_selected_val = parseInt($("#assignment-select option:selected").val());
+
+    let invalid = true
+
+    // alert(term_selected_val)
+    // Pseudo-class issue: https://stackoverflow.com/questions/5293280/css-pseudo-classes-with-inline-styles
+    if (invalid) {
+        //elem.setAttribute("style", "background-color:red;");
+        elem.setAttribute("style", "outline: none");
+    } else {
+        elem.setAttribute("style", "background-color:blue;");
+    }
+}
+
+
+function addEventToCommentBox(){
+    let comment_box = document.getElementById('speed_grader_comment_textarea');
+        comment_box = addEventListener("change", checkValidity, false)
+}
+
+*/
+
+// Called in: bcms_addSpeedGraderSaveNextButton
+function clearSelectOptions() {
+      document.getElementById('term-select').selectedIndex = 0;
+      document.getElementById('course-select').selectedIndex = 0;
+      document.getElementById('student-select').selectedIndex = 0;
+      $('#assignment-input').val('');
+}
+
+
 
 // Middle State assessment object, create an assignment and do work.
 let bcms_assignment = class { 
@@ -573,6 +742,8 @@ function bcms_addSpeedGraderSaveNextButton() {
     }).on("click", event => {
       $('button#comment_submit_button').trigger("click");
       $("button.save_rubric_button.Button.Button--primary").trigger("click");
+      clearSelectOptions()
+      updateInputNotificationOnSaveAndNext()
       setTimeout( () => {
         $('.icon-arrow-right.next').trigger("click");
       }, 750);
@@ -615,7 +786,7 @@ function bcms_promptCourseHelp() {
 * Prompt user to view the Speed Grader section of an assignment
 */
 function bcms_promptDirectToSpeedGrader() {
-  let link = $("#assignment-speedgrader-link > a");
+  let link = $("#assignment-speedgrader-link a");
   if ( !link.length ) return; //return if we're not on an assignment.
   
   // link.attr('target', '_self'); //target = self, not blank.
@@ -631,7 +802,7 @@ function bcms_promptDirectToSpeedGrader() {
       buttons: {
         "Open Assessment": function() {
           $( this ).dialog( "close" );
-          document.querySelector("#assignment-speedgrader-link > a").click();
+          link[0].click();
         },
         Cancel: function() {
           $( this ).dialog( "close" );
